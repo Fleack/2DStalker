@@ -1,15 +1,16 @@
-# Generated from CLion C/C++ Code Style settings
----
 Language: Cpp
 BasedOnStyle: LLVM
 AccessModifierOffset: -4
-AlignConsecutiveAssignments: false
-AlignConsecutiveDeclarations: false
-AlignOperands: false
-AlignTrailingComments: false
-AlwaysBreakTemplateDeclarations: Yes
-BraceWrapping: 
-  AfterCaseLabel: true
+AlignAfterOpenBracket: AlwaysBreak
+AllowAllArgumentsOnNextLine: true
+BinPackArguments: false
+BreakConstructorInitializers: BeforeComma
+ConstructorInitializerAllOnOneLineOrOnePerLine: true
+ConstructorInitializerIndentWidth: 4
+BinPackParameters: OnePerLine
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterCaseLabel: false
   AfterClass: true
   AfterControlStatement: true
   AfterEnum: true
@@ -22,29 +23,45 @@ BraceWrapping:
   BeforeElse: true
   BeforeLambdaBody: false
   BeforeWhile: true
-  SplitEmptyFunction: true
+  SplitEmptyFunction: false
   SplitEmptyRecord: true
   SplitEmptyNamespace: true
-BreakBeforeBraces: Custom
-ColumnLimit: 200
-IncludeCategories: 
-  - Regex: '^<.*'
-    Priority: 1
-  - Regex: '^".*'
-    Priority: 2
-  - Regex: '.*'
-    Priority: 3
+AllowShortFunctionsOnASingleLine: Empty
+AlignConsecutiveAssignments: false
+AlignConsecutiveDeclarations: false
+AlignOperands: false
+AlignTrailingComments: false
+AlwaysBreakTemplateDeclarations: Yes
+AllowShortCaseLabelsOnASingleLine: true
+AllowShortIfStatementsOnASingleLine: WithoutElse
+ColumnLimit: 0
+IncludeBlocks: Regroup
+MaxEmptyLinesToKeep: 1
 IncludeIsMainRegex: '([-_](test|unittest))?$'
+IncludeCategories:
+  - Regex: '^"[^"]+"'
+    Priority: 2
+
+  - Regex: '^<[^/]+>$'
+    Priority: 3
+
+  - Regex: '^<.*>$'
+    Priority: 4
+
+SortIncludes: CaseSensitive
+ReflowComments: false
+AllowAllParametersOfDeclarationOnNextLine: true
+BreakFunctionDefinitionParameters: false
 IndentCaseBlocks: true
 IndentWidth: 4
 InsertNewlineAtEOF: true
 MacroBlockBegin: ''
 MacroBlockEnd: ''
 PointerAlignment: Left
+QualifierAlignment: Right
 SpaceInEmptyParentheses: false
 SpacesInAngles: false
 SpacesInConditionalStatement: false
 SpacesInCStyleCastParentheses: false
 SpacesInParentheses: false
 TabWidth: 4
-...

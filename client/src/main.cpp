@@ -1,19 +1,19 @@
-#include <SFML/Graphics.hpp>
 #include <asio.hpp>
+#include <thread>
+
+#include <SFML/Graphics.hpp>
 #include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
-#include <thread>
 
 using asio::ip::tcp;
 
-// --- network thread context ---
 asio::io_context net_context;
 
-// --- client ---
 class Client
 {
 public:
-    explicit Client(asio::io_context& ctx) : socket_(ctx) {}
+    explicit Client(asio::io_context& ctx)
+        : socket_(ctx) {}
 
     asio::awaitable<void> connect()
     {
@@ -51,7 +51,6 @@ private:
     tcp::socket socket_;
 };
 
-// --- network thread ---
 void network_thread()
 {
     auto work = asio::make_work_guard(net_context);
@@ -74,12 +73,12 @@ int main()
 
     while (window.isOpen())
     {
-        while (const std::optional event = window.pollEvent())
+        while (std::optional const event = window.pollEvent())
         {
             if (event->is<sf::Event::Closed>())
                 window.close();
 
-            if (const auto* key = event->getIf<sf::Event::KeyPressed>())
+            if (auto const* key = event->getIf<sf::Event::KeyPressed>())
             {
                 if (key->code == sf::Keyboard::Key::Space)
                 {

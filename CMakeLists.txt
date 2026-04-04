@@ -59,43 +59,10 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(json spdlog sfml sqlitecpp asio fmt Catch2)
 
 # ====== Shared ======
-add_library(Shared INTERFACE)
-target_include_directories(Shared INTERFACE shared/src)
-target_link_libraries(Shared INTERFACE
-        nlohmann_json::nlohmann_json
-        spdlog::spdlog
-        fmt::fmt
-)
+add_subdirectory(shared)
 
 # ====== Server ======
-add_executable(StalkerServer
-        server/src/main.cpp
-)
-target_include_directories(StalkerServer PRIVATE
-        ${asio_SOURCE_DIR}/asio/include
-        ${sqlitecpp_SOURCE_DIR}/include
-)
-target_link_libraries(StalkerServer PRIVATE
-        Shared
-        SQLiteCpp
-        ws2_32
-        mswsock
-)
+add_subdirectory(server)
 
 # ====== Client ======
-add_executable(StalkerClient
-        client/src/main.cpp
-)
-target_include_directories(StalkerClient PRIVATE
-        ${asio_SOURCE_DIR}/asio/include
-        ${sqlitecpp_SOURCE_DIR}/include
-)
-target_link_libraries(StalkerClient PRIVATE
-        Shared
-        sfml-graphics
-        sfml-window
-        sfml-system
-        sfml-audio
-        ws2_32
-        mswsock
-)
+add_subdirectory(client)

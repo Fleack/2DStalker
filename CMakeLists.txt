@@ -44,12 +44,28 @@ FetchContent_Declare(
         GIT_TAG asio-1-30-2
 )
 
-FetchContent_MakeAvailable(json spdlog sfml sqlitecpp asio)
+FetchContent_Declare(
+        fmt
+        GIT_REPOSITORY https://github.com/fmtlib/fmt.git
+        GIT_TAG 12.1.0
+)
+
+FetchContent_Declare(
+        Catch2
+        GIT_REPOSITORY https://github.com/catchorg/Catch2.git
+        GIT_TAG v3.13.0
+)
+
+FetchContent_MakeAvailable(json spdlog sfml sqlitecpp asio fmt Catch2)
 
 # ====== Shared ======
 add_library(Shared INTERFACE)
-target_include_directories(Shared INTERFACE shared/include)
-target_link_libraries(Shared INTERFACE nlohmann_json::nlohmann_json)
+target_include_directories(Shared INTERFACE shared/src)
+target_link_libraries(Shared INTERFACE
+        nlohmann_json::nlohmann_json
+        spdlog::spdlog
+        fmt::fmt
+)
 
 # ====== Server ======
 add_executable(StalkerServer
@@ -61,7 +77,6 @@ target_include_directories(StalkerServer PRIVATE
 )
 target_link_libraries(StalkerServer PRIVATE
         Shared
-        spdlog::spdlog
         SQLiteCpp
         ws2_32
         mswsock
@@ -77,7 +92,6 @@ target_include_directories(StalkerClient PRIVATE
 )
 target_link_libraries(StalkerClient PRIVATE
         Shared
-        spdlog::spdlog
         sfml-graphics
         sfml-window
         sfml-system

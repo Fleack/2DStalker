@@ -68,3 +68,5 @@ add_subdirectory(server)
 
 # ====== Client ======
 add_subdirectory(client)
+
+add_custom_target(StalkerAll DEPENDS StalkerServer StalkerClient)

@@ -13,7 +13,10 @@ Client::Client(asio::io_context& ctx)
 
 Client::~Client()
 {
-    disconnect();
+    if (m_connected)
+    {
+        disconnect();
+    }
 }
 
 asio::awaitable<void> Client::connect(asio::ip::address ip, uint16_t port)

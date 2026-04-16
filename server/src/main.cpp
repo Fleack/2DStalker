@@ -1,5 +1,7 @@
 #include <asio.hpp>
 
+#include "protocol/message_types.hpp"
+
 #include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
 
@@ -28,7 +30,9 @@ asio::awaitable<void> session(tcp::socket socket)
             spdlog::info("Received: {}", j.dump());
 
             // --- response ---
-            nlohmann::json resp = {{"status", "ok"}, {"echo", j}};
+            nlohmann::json resp = {{"status", "ok"},
+                                   {"cmd", protocol::message_types::state_snapshot},
+                                   {"echo", j}};
 
             std::string out = resp.dump();
             uint32_t out_len = htonl(static_cast<uint32_t>(out.size()));

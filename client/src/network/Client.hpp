@@ -9,9 +9,19 @@ class Client
 public:
     explicit Client(asio::io_context& ctx);
 
-    asio::awaitable<void> connect();
-    asio::awaitable<void> send(nlohmann::json const& j);
+    ~Client();
+
+    asio::awaitable<void> connect(asio::ip::address host, uint16_t port);
+    void disconnect();
+
+    asio::awaitable<std::string> send(nlohmann::json const& j);
 
 private:
-    asio::ip::tcp::socket socket_;
+    void handle_connect(asio::error_code ec);
+
+private:
+    bool m_connected{false};
+    asio::ip::tcp::endpoint m_endpoint{};
+    asio::ip::tcp::socket m_socket;
+
 };

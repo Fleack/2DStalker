@@ -44,12 +44,14 @@ FetchContent_Declare(
         GIT_TAG asio-1-30-2
 )
 
+# Fmt
 FetchContent_Declare(
         fmt
         GIT_REPOSITORY https://github.com/fmtlib/fmt.git
         GIT_TAG 12.1.0
 )
 
+#Catch2
 FetchContent_Declare(
         Catch2
         GIT_REPOSITORY https://github.com/catchorg/Catch2.git

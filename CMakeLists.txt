@@ -62,6 +62,11 @@ FetchContent_MakeAvailable(json spdlog sfml sqlitecpp asio fmt Catch2)
 
 find_package(Protobuf CONFIG REQUIRED)
 
+include_directories(
+        ${asio_SOURCE_DIR}/asio/include
+        ${sqlitecpp_SOURCE_DIR}/include
+)
+
 # ====== Shared ======
 add_subdirectory(shared)
 

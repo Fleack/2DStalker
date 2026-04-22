@@ -60,6 +60,8 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(json spdlog sfml sqlitecpp asio fmt Catch2)
 
+find_package(Protobuf CONFIG REQUIRED)
+
 # ====== Shared ======
 add_subdirectory(shared)
 

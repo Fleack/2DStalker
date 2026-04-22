@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+package s2d.protocol;
+
+enum Status {
+  STATUS_UNSPECIFIED = 0;
+  STATUS_OK = 1;
+  STATUS_ERROR = 2;
+}
+
+message PingRequest {
+  uint64 timestamp = 1;
+}
+
+message PongResponse {
+  uint64 timestamp = 1;
+}
+
+message StateSnapshotRequest {
+}
+
+message StateSnapshotResponse {
+  string state_json = 1;
+}
+
+message ErrorResponse {
+  int32 code = 1;
+  string message = 2;
+}
+
+message ClientMessage {
+  uint64 request_id = 1;
+
+  oneof payload {
+    PingRequest ping = 10;
+    StateSnapshotRequest state_snapshot = 11;
+  }
+}
+
+message ServerMessage {
+  uint64 request_id = 1;
+  Status status = 2;
+
+  oneof payload {
+    PongResponse pong = 10;
+    StateSnapshotResponse state_snapshot = 11;
+    ErrorResponse error = 12;
+  }
+}

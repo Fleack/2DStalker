@@ -9,7 +9,7 @@
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
 
-namespace logger::detail
+namespace s2d::logger::detail
 {
 consteval char const* short_file_impl(char const* path, std::size_t size) noexcept
 {
@@ -61,11 +61,11 @@ void log(
     logger.log(loc, level, fmt_str, std::forward<Args>(args)...);
 }
 
-} // namespace logger::detail
+} // namespace s2d::logger::detail
 
 #define LOG(LogLevel, ...)                                                                \
-    ::logger::detail::log(                                                                \
-        *::logger::detail::default_logger(),                                              \
+    ::s2d::logger::detail::log(                                                                \
+        *::s2d::logger::detail::default_logger(),                                              \
         ::spdlog::level::LogLevel,                                                        \
-        ::spdlog::source_loc{::logger::detail::short_file(__FILE__), __LINE__, __func__}, \
+        ::spdlog::source_loc{::s2d::logger::detail::short_file(__FILE__), __LINE__, __func__}, \
         __VA_ARGS__)

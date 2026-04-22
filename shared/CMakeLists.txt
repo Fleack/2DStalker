@@ -2,7 +2,6 @@ add_library(Shared INTERFACE)
 
 target_include_directories(Shared INTERFACE
         src
-        ${asio_SOURCE_DIR}/asio/include
 )
 
 add_subdirectory(src/protocol)

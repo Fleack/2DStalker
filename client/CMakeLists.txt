@@ -4,9 +4,6 @@ add_executable(StalkerClient
 
 add_subdirectory(src/network)
 
-target_include_directories(StalkerClient PRIVATE
-        ${sqlitecpp_SOURCE_DIR}/include
-)
 target_link_libraries(StalkerClient PRIVATE
         Shared
         sfml-graphics

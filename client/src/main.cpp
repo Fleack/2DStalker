@@ -1,6 +1,5 @@
 #include "logger/logger.hpp"
 #include "network/Client.hpp"
-#include "protocol/message_types.hpp"
 
 #include <thread>
 
@@ -36,7 +35,7 @@ int main()
             {
                 if (key->code == sf::Keyboard::Key::Space)
                 {
-                    nlohmann::json j = {{"cmd", protocol::message_types::submit_turn}};
+                    nlohmann::json j = {{"cmd", "type"}};
                     auto response = co_spawn(net_context, client.send(j), asio::use_future).get();
                     LOG(info, "Response from server: {}", response);
                 }

@@ -10,6 +10,11 @@ target_link_libraries(StalkerClient PRIVATE
         sfml-window
         sfml-system
         sfml-audio
-        ws2_32
-        mswsock
 )
+
+if (WIN32)
+    target_link_libraries(StalkerClient PRIVATE
+            ws2_32
+            mswsock
+    )
+endif()

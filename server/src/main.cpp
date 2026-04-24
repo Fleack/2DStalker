@@ -1,5 +1,8 @@
 #include "logger/logger.hpp"
-#include "network/Session.hpp"
+#include "network/Connection.hpp"
+#include "network/ServerMessageHandler.hpp"
+#include "network/TcpServer.hpp"
+#include "network/network_config.hpp"
 
 #include <asio.hpp>
 #include <cstdint>
@@ -8,33 +11,16 @@
 
 using asio::ip::tcp;
 
-// --- listener ---
-asio::awaitable<void> listener(uint16_t port)
-{
-    auto executor = co_await asio::this_coro::executor;
-
-    tcp::acceptor acceptor(executor, {tcp::v4(), port});
-
-    LOG(info, "Server started on port {}", port);
-
-    for (;;)
-    {
-        tcp::socket socket = co_await acceptor.async_accept(asio::use_awaitable);
-        LOG(info, "Client connected: {}", socket.remote_endpoint().address().to_string());
-
-        co_spawn(executor, [socket = std::move(socket)]() mutable -> asio::awaitable<void> {
-                     s2d::network::Session session(std::move(socket));
-                     co_await session.start(); }, asio::detached);
-    }
-}
-
 int main()
 {
     try
     {
         asio::io_context io;
+        s2d::network::network_config cfg;
+        s2d::network::ServerMessageHandler handler;
+        s2d::network::TcpServer server{io, cfg, handler};
 
-        co_spawn(io, listener(1234), asio::detached);
+        asio::co_spawn(io, [&server]() -> asio::awaitable<void> { co_await server.start(); }, asio::detached);
 
         io.run();
     }

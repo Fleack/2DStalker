@@ -1,10 +1,15 @@
 add_library(ServerNetwork
-        Server.cpp
-        Session.cpp
-        Session.hpp)
+        Connection.cpp
+        ConnectionManager.cpp
+        MessageChannel.cpp
+        ServerMessageHandler.cpp
+        TcpServer.cpp)
 
-target_link_libraries(ServerNetwork PRIVATE
-        Shared
-        ws2_32
-        mswsock
-)
+target_link_libraries(ServerNetwork PRIVATE Shared)
+
+if (WIN32)
+    target_link_libraries(ServerNetwork PRIVATE
+            ws2_32
+            mswsock
+    )
+endif()

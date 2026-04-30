@@ -1,12 +1,11 @@
 #include "Client.hpp"
 
-#include "logger/logger.hpp"
+#include "shared/logger/logger.hpp"
+#include "shared/protocol/message.pb.h"
 
 #include <asio/connect.hpp>
-#include <asio/read.hpp>
 #include <asio/redirect_error.hpp>
 #include <asio/use_awaitable.hpp>
-#include <asio/write.hpp>
 
 Client::Client(asio::io_context& ctx)
     : m_socket(ctx) {}
@@ -42,28 +41,15 @@ void Client::disconnect()
     m_endpoint = {};
 }
 
-asio::awaitable<std::string> Client::send(nlohmann::json const& j)
+asio::awaitable<s2d::protocol::ServerMessage> Client::send(s2d::protocol::ClientMessage const& message)
 {
     if (!m_connected)
     {
         LOG(err, "Not connected to server");
-        co_return "Failed to connect to server";
+        throw std::runtime_error("Not connected to server");
     }
-    std::string data = j.dump();
-    uint32_t len = htonl(static_cast<uint32_t>(data.size()));
-
-    co_await asio::async_write(m_socket, asio::buffer(&len, sizeof(len)), asio::use_awaitable);
-    co_await asio::async_write(m_socket, asio::buffer(data), asio::use_awaitable);
-
-    LOG(debug, "Sent to server[{}:{}]: {}", m_endpoint.address().to_string(), m_endpoint.port(), data);
-
-    uint32_t net_len;
-    co_await asio::async_read(m_socket, asio::buffer(&net_len, sizeof(net_len)), asio::use_awaitable);
-
-    u_long resp_len{ntohl(net_len)};
-    std::string resp(resp_len, '\0');
-    co_await asio::async_read(m_socket, asio::buffer(resp), asio::use_awaitable);
-    co_return resp;
+    co_await m_messageChannel.writeMessage(m_socket, message);
+    co_return co_await m_messageChannel.readMessage<s2d::protocol::ServerMessage>(m_socket);
 }
 
 void Client::handle_connect(asio::error_code ec)

@@ -1,4 +1,4 @@
-#include "logger/logger.hpp"
+#include "shared/logger/logger.hpp"
 #include "network/Connection.hpp"
 #include "network/ServerMessageHandler.hpp"
 #include "network/TcpServer.hpp"

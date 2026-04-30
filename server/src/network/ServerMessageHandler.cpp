@@ -1,10 +1,9 @@
 #include "ServerMessageHandler.hpp"
 
 #include "connection_id.hpp"
-#include "logger/logger.hpp"
+#include "shared/logger/logger.hpp"
+#include "shared/protocol/message.pb.h"
 
-#include <message.pb.h>
-#include <string>
 #include <string_view>
 
 namespace s2d::network
@@ -29,6 +28,7 @@ asio::awaitable<protocol::ServerMessage> ServerMessageHandler::onMessage(
     LOG(debug, "Received from client[{}] message[id={}]", connection_id.id, message.request_id()); // TODO: improve logging
 
     protocol::ServerMessage response;
+    response.set_request_id(message.request_id());
     switch (message.payload_case())
     {
     case protocol::ClientMessage::kPing:

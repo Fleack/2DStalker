@@ -1,6 +1,6 @@
 #include "TcpServer.hpp"
 
-#include "logger/logger.hpp"
+#include "shared/logger/logger.hpp"
 #include "network_config.hpp"
 
 #include <utility>

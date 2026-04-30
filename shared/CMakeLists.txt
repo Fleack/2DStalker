@@ -4,7 +4,7 @@ target_include_directories(Shared INTERFACE
         src
 )
 
-add_subdirectory(src/protocol)
+add_subdirectory(src/shared/protocol)
 
 target_link_libraries(Shared INTERFACE
         StalkerProtocol

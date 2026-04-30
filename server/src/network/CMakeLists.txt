@@ -1,7 +1,6 @@
 add_library(ServerNetwork
         Connection.cpp
         ConnectionManager.cpp
-        MessageChannel.cpp
         ServerMessageHandler.cpp
         TcpServer.cpp)
 
@@ -12,4 +11,4 @@ if (WIN32)
             ws2_32
             mswsock
     )
-endif()
+endif ()

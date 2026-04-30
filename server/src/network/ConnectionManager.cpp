@@ -1,6 +1,6 @@
 #include "ConnectionManager.hpp"
 
-#include "logger/logger.hpp"
+#include "shared/logger/logger.hpp"
 
 #include <ranges>
 #include <utility>

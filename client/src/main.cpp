@@ -1,5 +1,5 @@
-#include "logger/logger.hpp"
 #include "network/Client.hpp"
+#include "shared/logger/logger.hpp"
 
 #include <thread>
 
@@ -10,6 +10,12 @@
 #include <nlohmann/json.hpp>
 
 using asio::ip::tcp;
+
+uint64_t nextRequestId()
+{
+    static std::atomic<uint64_t> id{0};
+    return ++id;
+}
 
 int main()
 {
@@ -35,9 +41,24 @@ int main()
             {
                 if (key->code == sf::Keyboard::Key::Space)
                 {
-                    nlohmann::json j = {{"cmd", "type"}};
-                    auto response = co_spawn(net_context, client.send(j), asio::use_future).get();
-                    LOG(info, "Response from server: {}", response);
+                    s2d::protocol::ClientMessage message;
+                    message.set_request_id(nextRequestId());
+                    message.mutable_state_snapshot();
+                    auto response = co_spawn(net_context, client.send(message), asio::use_future).get();
+                    LOG(info, "Response from server: {}", response.SerializeAsString());
+                }
+
+                if (key->code == sf::Keyboard::Key::P)
+                {
+                    s2d::protocol::ClientMessage message;
+                    message.set_request_id(nextRequestId());
+
+                    auto nowMs = duration_cast<std::chrono::milliseconds>(
+                                     std::chrono::system_clock::now().time_since_epoch())
+                                     .count();
+                    message.mutable_ping()->set_timestamp(nowMs);
+                    auto response = co_spawn(net_context, client.send(message), asio::use_future).get();
+                    LOG(info, "Response from server: {}", response.SerializeAsString());
                 }
 
                 if (key->code == sf::Keyboard::Key::C)

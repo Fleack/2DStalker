@@ -1,12 +1,12 @@
 #pragma once
 
-#include "MessageChannel.hpp"
 #include "connection_id.hpp"
+#include "shared/protocol/message.pb.h"
+#include "shared/network/MessageChannel.hpp"
 
 #include <atomic>
 #include <functional>
 #include <memory>
-#include <message.pb.h>
 #include <string>
 
 #include <asio/awaitable.hpp>
@@ -52,7 +52,7 @@ private:
 private:
     connection_id m_id;
     asio::ip::tcp::socket m_socket;
-    MessageChannel m_codec;
+    MessageChannel m_messageChannel;
     IMessageHandler& m_handler;
     std::function<void(connection_id)> m_onClosed;
     std::atomic_bool m_stopped{false};

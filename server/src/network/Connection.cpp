@@ -1,8 +1,8 @@
 #include "Connection.hpp"
 
 #include "IMessageHandler.hpp"
-#include "logger/logger.hpp"
-#include "message.pb.h"
+#include "shared/logger/logger.hpp"
+#include "shared/protocol/message.pb.h"
 
 #include <exception>
 #include <utility>
@@ -22,7 +22,7 @@ Connection::Connection(
     std::function<void(connection_id)> onClosed) noexcept
     : m_id{id}
     , m_socket{std::move(socket)}
-    , m_codec{max_message_bytes}
+    , m_messageChannel{max_message_bytes}
     , m_handler{handler}
     , m_onClosed{std::move(onClosed)}
 {
@@ -65,7 +65,7 @@ asio::awaitable<void> Connection::send(protocol::ServerMessage const& message)
     }
 
     LOG(debug, "Sending to client[{}] message with status {}", m_id.id, std::to_underlying(message.status())); // TODO: improve logging
-    co_await m_codec.writeServerMessage(m_socket, message);
+    co_await m_messageChannel.writeMessage(m_socket, message);
 }
 
 // --- private ---
@@ -92,7 +92,7 @@ asio::awaitable<void> Connection::readLoop()
 {
     for (;;)
     {
-        auto message = co_await m_codec.readClientMessage(m_socket);
+        auto message = co_await m_messageChannel.readMessage<protocol::ClientMessage>(m_socket);
         LOG(debug, "Received from client[{}] message with request_id {}", m_id.id, message.request_id()); // TODO: improve logging
         auto response = co_await m_handler.onMessage(m_id, message);
         response.set_request_id(message.request_id());

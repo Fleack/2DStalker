@@ -1,8 +1,7 @@
 #pragma once
 
 #include "connection_id.hpp"
-#include "message.pb.h"
-
+#include "shared/protocol/message.pb.h"
 #include <asio/awaitable.hpp>
 
 namespace s2d::network

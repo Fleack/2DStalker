@@ -83,4 +83,5 @@ int main()
         window.clear(sf::Color(30, 30, 30));
         window.display();
     }
+    net_context.stop();
 }

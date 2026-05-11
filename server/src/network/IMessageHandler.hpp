@@ -2,6 +2,7 @@
 
 #include "connection_id.hpp"
 #include "shared/protocol/message.pb.h"
+
 #include <asio/awaitable.hpp>
 
 namespace s2d::network

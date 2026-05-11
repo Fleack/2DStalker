@@ -1,8 +1,8 @@
 #pragma once
 
 #include "connection_id.hpp"
-#include "shared/protocol/message.pb.h"
 #include "shared/network/MessageChannel.hpp"
+#include "shared/protocol/message.pb.h"
 
 #include <atomic>
 #include <functional>

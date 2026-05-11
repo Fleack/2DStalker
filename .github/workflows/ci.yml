@@ -1,0 +1,132 @@
+name: CI
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+  push:
+    branches:
+      - master
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  format:
+    name: format
+    runs-on: windows-2025
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup MSYS2 UCRT64
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          cache: true
+          install: >-
+            git
+            mingw-w64-ucrt-x86_64-clang-tools-extra
+
+      - name: Check clang-format
+        run: |
+          files=$(git ls-files '*.cpp' '*.hpp' '*.h')
+          if [ -n "$files" ]; then
+            clang-format --dry-run --Werror $files
+          fi
+
+  proto:
+    name: proto
+    runs-on: windows-2025
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup MSYS2 UCRT64
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          cache: true
+          install: >-
+            mingw-w64-ucrt-x86_64-protobuf
+
+      - name: Check protobuf schema
+        run: |
+          mkdir -p build/proto-check/shared/protocol
+          protoc --proto_path=shared/src --cpp_out=build/proto-check shared/src/shared/protocol/message.proto
+
+  build:
+    name: build ${{ matrix.build_type }}
+    runs-on: windows-2025
+    strategy:
+      fail-fast: false
+      matrix:
+        build_type:
+          - Debug
+          - Release
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup MSYS2 UCRT64
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          cache: true
+          install: >-
+            git
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-cmake
+            mingw-w64-ucrt-x86_64-ninja
+            mingw-w64-ucrt-x86_64-protobuf
+
+      - name: Check GCC version
+        run: |
+          version=$(g++ -dumpfullversion -dumpversion)
+          echo "GCC version: $version"
+          case "$version" in
+            16.1|16.1.*) ;;
+            *)
+              echo "::error::Expected GCC 16.1.x, got $version"
+              exit 1
+              ;;
+          esac
+          g++ --version
+
+      - name: Restore FetchContent cache
+        uses: actions/cache@v5
+        with:
+          path: .cache/fetchcontent/${{ matrix.build_type }}
+          key: fetchcontent-windows-2025-ucrt64-gcc-16.1-${{ matrix.build_type }}-${{ hashFiles('CMakeLists.txt', '**/CMakeLists.txt') }}
+          restore-keys: |
+            fetchcontent-windows-2025-ucrt64-gcc-16.1-${{ matrix.build_type }}-
+
+      - name: Configure
+        run: |
+          fetchcontent_dir="$(pwd)/.cache/fetchcontent/${{ matrix.build_type }}"
+          mkdir -p "$fetchcontent_dir"
+          cmake -S . -B build/${{ matrix.build_type }} -G Ninja \
+            -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+            -DCMAKE_C_COMPILER=gcc \
+            -DCMAKE_CXX_COMPILER=g++ \
+            -DFETCHCONTENT_BASE_DIR="$fetchcontent_dir"
+
+      - name: Build
+        run: cmake --build build/${{ matrix.build_type }} --target StalkerAll
+
+      - name: Test
+        run: ctest --test-dir build/${{ matrix.build_type }} --output-on-failure

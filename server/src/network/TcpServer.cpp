@@ -1,7 +1,7 @@
 #include "TcpServer.hpp"
 
-#include "shared/logger/logger.hpp"
 #include "network_config.hpp"
+#include "shared/logger/logger.hpp"
 
 #include <utility>
 

@@ -63,9 +63,9 @@ void log(
 
 } // namespace s2d::logger::detail
 
-#define LOG(LogLevel, ...)                                                                \
+#define LOG(LogLevel, ...)                                                                     \
     ::s2d::logger::detail::log(                                                                \
         *::s2d::logger::detail::default_logger(),                                              \
-        ::spdlog::level::LogLevel,                                                        \
+        ::spdlog::level::LogLevel,                                                             \
         ::spdlog::source_loc{::s2d::logger::detail::short_file(__FILE__), __LINE__, __func__}, \
         __VA_ARGS__)

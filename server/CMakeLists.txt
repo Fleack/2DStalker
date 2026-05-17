@@ -8,3 +8,5 @@ target_link_libraries(StalkerServer PRIVATE
         Shared
         ServerNetwork
 )
+
+add_subdirectory(tests)

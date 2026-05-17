@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ConnectionWriter.hpp"
 #include "connection_id.hpp"
 #include "shared/network/MessageChannel.hpp"
 #include "shared/protocol/message.pb.h"
@@ -35,7 +36,7 @@ public:
     void start();
     void stop() noexcept;
 
-    asio::awaitable<void> send(protocol::ServerMessage const& message);
+    void send(protocol::ServerMessage message);
 
     connection_id getId() const noexcept
     {
@@ -50,11 +51,13 @@ private:
     std::string remoteEndpointString() const noexcept;
 
 private:
-    connection_id m_id;
+    ConnectionWriter m_writer;
     asio::ip::tcp::socket m_socket;
     MessageChannel m_messageChannel;
-    IMessageHandler& m_handler;
     std::function<void(connection_id)> m_onClosed;
+    connection_id m_id;
+    IMessageHandler& m_handler;
     std::atomic_bool m_stopped{false};
+    std::atomic_bool m_closeReported{false};
 };
 } // namespace s2d::network

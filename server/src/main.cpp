@@ -1,8 +1,8 @@
-#include "shared/logger/logger.hpp"
 #include "network/Connection.hpp"
 #include "network/ServerMessageHandler.hpp"
 #include "network/TcpServer.hpp"
 #include "network/network_config.hpp"
+#include "shared/logger/logger.hpp"
 
 #include <asio.hpp>
 #include <cstdint>
@@ -26,6 +26,6 @@ int main()
     }
     catch (std::exception& e)
     {
-        LOG(err, "Fatal: {}", e.what());
+        LOG(err, "Exception: {}", e.what());
     }
 }

@@ -9,6 +9,7 @@
 
 #include <asio/co_spawn.hpp>
 #include <asio/detached.hpp>
+#include <asio/error_code.hpp>
 #include <fmt/format.h>
 
 namespace s2d::network
@@ -20,11 +21,12 @@ Connection::Connection(
     IMessageHandler& handler,
     std::uint32_t max_message_bytes,
     std::function<void(connection_id)> onClosed) noexcept
-    : m_id{id}
-    , m_socket{std::move(socket)}
+    : m_socket{std::move(socket)}
+    , m_writer{m_socket, id, max_message_bytes, [this] { closeAndReport(); }}
     , m_messageChannel{max_message_bytes}
-    , m_handler{handler}
     , m_onClosed{std::move(onClosed)}
+    , m_id{id}
+    , m_handler{handler}
 {
 }
 
@@ -56,16 +58,15 @@ void Connection::stop() noexcept
     LOG(info, "Connection[id={}] stopped with client {}", m_id.id, remoteEndpoint);
 }
 
-asio::awaitable<void> Connection::send(protocol::ServerMessage const& message)
+void Connection::send(protocol::ServerMessage message)
 {
     if (m_stopped.load() || !m_socket.is_open())
     {
         LOG(warn, "Connection[id={}] is stopped or socket is closed", m_id.id);
-        co_return;
+        return;
     }
 
-    LOG(debug, "Sending to client[{}] message with status {}", m_id.id, std::to_underlying(message.status())); // TODO: improve logging
-    co_await m_messageChannel.writeMessage(m_socket, message);
+    m_writer.send(std::move(message), shared_from_this());
 }
 
 // --- private ---
@@ -96,12 +97,17 @@ asio::awaitable<void> Connection::readLoop()
         LOG(debug, "Received from client[{}] message with request_id {}", m_id.id, message.request_id()); // TODO: improve logging
         auto response = co_await m_handler.onMessage(m_id, message);
         response.set_request_id(message.request_id());
-        co_await send(response);
+        send(std::move(response));
     }
 }
 
 void Connection::closeAndReport() noexcept
 {
+    if (m_closeReported.exchange(true))
+    {
+        return;
+    }
+
     stop();
 
     try
@@ -128,8 +134,15 @@ void Connection::closeAndReport() noexcept
 
 std::string Connection::remoteEndpointString() const noexcept
 {
-    auto const endpoint = m_socket.remote_endpoint();
-    return fmt::format("{}:{}", endpoint.address().to_string(), endpoint.port());
+    try
+    {
+        auto const endpoint = m_socket.remote_endpoint();
+        return fmt::format("{}:{}", endpoint.address().to_string(), endpoint.port());
+    }
+    catch (...)
+    {
+        return "<unknown>";
+    }
 }
 
 } // namespace s2d::network

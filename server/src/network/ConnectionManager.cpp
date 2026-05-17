@@ -66,33 +66,33 @@ std::shared_ptr<Connection> ConnectionManager::get(connection_id id) const
     return it->second;
 }
 
-asio::awaitable<void> ConnectionManager::send(connection_id id, protocol::ServerMessage const& message) const
+void ConnectionManager::send(connection_id id, protocol::ServerMessage const& message) const
 {
     if (m_stopped)
     {
         LOG(err, "Failed to send message: ConnectionManager is stopped");
-        co_return;
+        return;
     }
 
     if (auto const connection = get(id))
     {
-        co_await connection->send(message);
+        connection->send(message);
     }
 }
 
-asio::awaitable<void> ConnectionManager::broadcast(protocol::ServerMessage const& message) const
+void ConnectionManager::broadcast(protocol::ServerMessage const& message) const
 {
     if (m_stopped)
     {
         LOG(err, "Failed to broadcast message: ConnectionManager is stopped");
-        co_return;
+        return;
     }
 
     auto const snapshot = makeSnapshot();
 
     for (auto const& connection : snapshot)
     {
-        co_await connection->send(message);
+        connection->send(message);
     }
 }
 

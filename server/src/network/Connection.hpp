@@ -51,7 +51,6 @@ private:
     std::string remoteEndpointString() const noexcept;
 
 private:
-    ConnectionWriter m_writer;
     asio::ip::tcp::socket m_socket;
     ConnectionWriter m_writer;
     MessageChannel m_messageChannel;

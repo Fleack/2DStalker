@@ -7,8 +7,9 @@ target_include_directories(Shared INTERFACE
 add_subdirectory(src/shared/protocol)
 
 target_link_libraries(Shared INTERFACE
+        asio_headers
+        json_headers
         StalkerProtocol
-        nlohmann_json::nlohmann_json
         spdlog::spdlog
         fmt::fmt
 )

@@ -11,11 +11,14 @@
 
 using asio::ip::tcp;
 
+namespace
+{
 uint64_t nextRequestId()
 {
     static std::atomic<uint64_t> id{0};
     return ++id;
 }
+} // namespace
 
 int main()
 {
@@ -56,7 +59,7 @@ int main()
                     auto nowMs = duration_cast<std::chrono::milliseconds>(
                                      std::chrono::system_clock::now().time_since_epoch())
                                      .count();
-                    message.mutable_ping()->set_timestamp(nowMs);
+                    message.mutable_ping()->set_timestamp(static_cast<uint64_t>(nowMs));
                     auto response = co_spawn(net_context, client.send(message), asio::use_future).get();
                     LOG(info, "Response from server: {}", response.SerializeAsString());
                 }

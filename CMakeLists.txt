@@ -5,9 +5,58 @@ set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-if (WIN32)
-    add_compile_definitions(_WIN32_WINNT=0x0601)
-endif()
+function(enable_gcc_flags target)
+    if (NOT CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+        return()
+    endif ()
+
+    target_compile_options(${target} PRIVATE
+            -Werror
+            -Wall
+            -Wextra
+            -Wpedantic
+
+            -Wformat=2
+            -Wconversion
+            -Wsign-conversion
+            -Wshadow=compatible-local
+            -Wold-style-cast
+            -Wcast-align=strict
+            -Wcast-qual
+            -Wzero-as-null-pointer-constant
+            -Wnon-virtual-dtor
+            -Woverloaded-virtual
+            -Wsuggest-override
+            -Wduplicated-cond
+            -Wduplicated-branches
+            -Wlogical-op
+            -Wnull-dereference
+            -Wdouble-promotion
+            -Wswitch-enum
+            -Wundef
+            -Wuseless-cast
+            -Wvla
+            -Walloca
+            -Wmissing-declarations
+
+            -fdiagnostics-color=always
+            -fdiagnostics-show-option
+
+            # Debug config
+            $<$<CONFIG:Debug>:-Og>
+            $<$<CONFIG:Debug>:-g3>
+            $<$<CONFIG:Debug>:-ggdb>
+            $<$<CONFIG:Debug>:-fno-omit-frame-pointer>
+
+            # RelWithDebInfo config
+            $<$<CONFIG:RelWithDebInfo>:-O2>
+            $<$<CONFIG:RelWithDebInfo>:-g>
+            $<$<CONFIG:RelWithDebInfo>:-fno-omit-frame-pointer>
+
+            # Release config
+            $<$<CONFIG:Release>:-O2>
+    )
+endfunction()
 
 include(FetchContent)
 
@@ -32,13 +81,6 @@ FetchContent_Declare(
         GIT_TAG 3.0.2
 )
 
-# SQLiteCpp
-FetchContent_Declare(
-        sqlitecpp
-        GIT_REPOSITORY https://github.com/SRombauts/SQLiteCpp.git
-        GIT_TAG 3.3.3
-)
-
 # Boost Asio
 FetchContent_Declare(
         asio
@@ -53,21 +95,40 @@ FetchContent_Declare(
         GIT_TAG 12.1.0
 )
 
-#Catch2
+# Catch2
 FetchContent_Declare(
         Catch2
         GIT_REPOSITORY https://github.com/catchorg/Catch2.git
         GIT_TAG v3.13.0
 )
 
-FetchContent_MakeAvailable(json spdlog sfml sqlitecpp asio fmt Catch2)
+FetchContent_MakeAvailable(json spdlog sfml asio fmt Catch2)
 
 find_package(Protobuf CONFIG REQUIRED)
 
-include_directories(
-        ${asio_SOURCE_DIR}/asio/include
-        ${sqlitecpp_SOURCE_DIR}/include
+# ====== Json headers ======
+add_library(json_headers INTERFACE)
+
+target_include_directories(json_headers SYSTEM INTERFACE
+        ${json_SOURCE_DIR}/include
 )
+
+# ====== Asio headers ======
+add_library(asio_headers INTERFACE)
+
+target_include_directories(asio_headers SYSTEM INTERFACE
+        ${asio_SOURCE_DIR}/asio/include
+)
+
+target_compile_definitions(asio_headers INTERFACE
+        ASIO_STANDALONE
+)
+
+if (WIN32)
+    target_compile_definitions(asio_headers INTERFACE
+            _WIN32_WINNT=0x0601
+    )
+endif ()
 
 # ====== Shared ======
 add_subdirectory(shared)
@@ -79,3 +140,6 @@ add_subdirectory(server)
 add_subdirectory(client)
 
 add_custom_target(StalkerAll DEPENDS StalkerServer StalkerClient)
+
+enable_gcc_flags(StalkerServer)
+enable_gcc_flags(StalkerClient)

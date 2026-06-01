@@ -1,4 +1,4 @@
-# TextStalker Protocol v1
+# Stalker2D Protocol v1
 
 ## Transport
 

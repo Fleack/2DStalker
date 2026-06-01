@@ -1,7 +1,7 @@
 $ErrorActionPreference = "Stop"
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
-$serverExe = Join-Path $repoRoot "cmake-build-debug\server\StalkerServer.exe"
+$serverExe = Join-Path $repoRoot "cmake-build-debug\server\Server.exe"
 $runtimeBin = "C:\msys64\ucrt64\bin"
 
 if (-not (Test-Path -Path $runtimeBin -PathType Container))

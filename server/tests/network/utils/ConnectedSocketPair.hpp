@@ -1,5 +1,6 @@
 #pragma once
 
+#include <asio/ip/tcp.hpp>
 #include <asio/use_future.hpp>
 
 struct ConnectedSocketPair

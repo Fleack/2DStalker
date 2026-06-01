@@ -11,6 +11,8 @@ target_include_directories(ServerNetwork PUBLIC
         ${PROJECT_SOURCE_DIR}
 )
 
+target_link_libraries(ServerNetwork PRIVATE asio_headers)
+
 if (WIN32)
     target_link_libraries(ServerNetwork PRIVATE
             ws2_32

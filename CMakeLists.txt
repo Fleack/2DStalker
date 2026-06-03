@@ -99,6 +99,8 @@ if (BUILD_TESTS)
             GIT_TAG v3.13.0
     )
     FetchContent_MakeAvailable(Catch2)
+
+    include(CTest)
 endif ()
 
 # ====== Json headers ======

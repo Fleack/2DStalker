@@ -21,8 +21,8 @@ Connection::Connection(
     IMessageHandler& handler,
     std::uint32_t max_message_bytes,
     std::function<void(connection_id)> onClosed) noexcept
-    : m_writer{m_socket, id, max_message_bytes, [this] { closeAndReport(); }}
-    , m_socket{std::move(socket)}
+    : m_socket{std::move(socket)}
+    , m_writer{m_socket, id, max_message_bytes, [this] { closeAndReport(); }}
     , m_messageChannel{max_message_bytes}
     , m_onClosed{std::move(onClosed)}
     , m_id{id}

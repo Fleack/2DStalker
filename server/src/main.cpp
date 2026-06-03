@@ -26,6 +26,6 @@ int main()
     }
     catch (std::exception& e)
     {
-        LOG(err, "Fatal: {}", e.what());
+        LOG(err, "Exception: {}", e.what());
     }
 }

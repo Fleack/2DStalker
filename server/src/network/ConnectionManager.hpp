@@ -19,8 +19,8 @@ public:
     bool remove(connection_id id);
     std::shared_ptr<Connection> get(connection_id id) const;
 
-    asio::awaitable<void> send(connection_id id, protocol::ServerMessage const& message) const;
-    asio::awaitable<void> broadcast(protocol::ServerMessage const& message) const;
+    void send(connection_id id, protocol::ServerMessage const& message) const;
+    void broadcast(protocol::ServerMessage const& message) const;
 
     void stopAll() noexcept;
 

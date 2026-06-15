@@ -1,3 +1,4 @@
+#include "game/WorldService.hpp"
 #include "network/ServerMessageHandler.hpp"
 #include "network/TcpServer.hpp"
 #include "network/tcp_server_config.hpp"
@@ -17,7 +18,8 @@ int main()
     {
         asio::io_context io;
         s2d::network::tcp_server_config cfg;
-        s2d::network::ServerMessageHandler handler;
+        s2d::game::WorldService worldService;
+        s2d::network::ServerMessageHandler handler{worldService};
         s2d::network::TcpServer server{io, cfg, handler};
 
         asio::co_spawn(io, [&server]() -> asio::awaitable<void> { co_await server.start(); }, asio::detached);

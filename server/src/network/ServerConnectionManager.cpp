@@ -17,6 +17,10 @@ std::shared_ptr<server_connection_t> ServerConnectionManager::create(asio::ip::t
     }
 
     auto const connectionId = ++m_nextConnectionId;
+    if (connectionId.id == 0) [[unlikely]]
+    {
+        throw std::runtime_error("Too many connections");
+    }
 
     auto connection = std::make_shared<server_connection_t>(
         connectionId,

@@ -16,5 +16,6 @@ target_link_libraries(Client PRIVATE
         sfml-graphics
         sfml-window
         sfml-system
+        json_headers
 )
 enable_gcc_flags(Client)

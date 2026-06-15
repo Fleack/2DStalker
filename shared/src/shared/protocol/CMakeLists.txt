@@ -24,3 +24,7 @@ target_include_directories(SharedProtocol
         PUBLIC
         ${CMAKE_CURRENT_BINARY_DIR}/generated
 )
+
+target_link_libraries(Shared INTERFACE
+        SharedProtocol
+)

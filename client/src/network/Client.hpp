@@ -7,8 +7,9 @@
 
 namespace s2d::protocol
 {
+class ServerMessage;
 class ClientMessage;
-}
+} // namespace s2d::protocol
 
 class Client
 {

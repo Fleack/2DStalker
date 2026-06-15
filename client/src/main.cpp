@@ -1,5 +1,6 @@
 #include "network/Client.hpp"
 #include "shared/logger/logger.hpp"
+#include "shared/protocol/message.pb.h"
 
 #include <thread>
 

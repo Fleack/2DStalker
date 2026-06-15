@@ -11,3 +11,5 @@ target_link_libraries(ServerNetwork PUBLIC
         SharedNetwork
         SharedProtocol
         SharedLogger)
+
+enable_gcc_flags(ServerNetwork)

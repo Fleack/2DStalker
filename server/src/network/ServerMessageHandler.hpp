@@ -1,22 +1,18 @@
 #pragma once
 
-#include "IMessageHandler.hpp"
+#include "shared/network/AMessageHandler.hpp"
+#include "shared/protocol/message.pb.h"
 
 #include <asio/awaitable.hpp>
-
-namespace s2d::protocol
-{
-class ClientMessage;
-}
 
 namespace s2d::network
 {
 struct connection_id;
 
-class ServerMessageHandler : public IMessageHandler
+class ServerMessageHandler
 {
 public:
-    asio::awaitable<protocol::ServerMessage> onMessage(connection_id connection_id, protocol::ClientMessage const& message) override;
-    void onDisconnect(connection_id connection_id) override;
+    asio::awaitable<protocol::ServerMessage> onMessage(connection_id connection_id, protocol::ClientMessage const& message);
+    void onDisconnect(connection_id connection_id) noexcept;
 };
 } // namespace s2d::network

@@ -32,7 +32,6 @@ function(enable_gcc_flags target)
             -Wduplicated-cond
             -Wduplicated-branches
             -Wlogical-op
-            -Wnull-dereference
             -Wdouble-promotion
             -Wswitch-enum
             -Wundef
@@ -93,14 +92,7 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(json spdlog asio fmt)
 
 if (BUILD_TESTS)
-    FetchContent_Declare(
-            Catch2
-            GIT_REPOSITORY https://github.com/catchorg/Catch2.git
-            GIT_TAG v3.13.0
-    )
-    FetchContent_MakeAvailable(Catch2)
-
-    include(CTest)
+    include(EnableTesting.cmake)
 endif ()
 
 # ====== Json headers ======
@@ -137,16 +129,3 @@ add_subdirectory(server)
 add_subdirectory(client)
 
 add_custom_target(S2DAll DEPENDS Server Client)
-
-# TODO: Make network lib and suppress only for it
-target_compile_options(Server PRIVATE
-        $<$<CXX_COMPILER_ID:GNU>:-Wno-error=null-dereference>
-)
-
-target_compile_options(Client PRIVATE
-        $<$<CXX_COMPILER_ID:GNU>:-Wno-error=null-dereference>
-)
-
-target_compile_options(ServerNetwork PRIVATE
-        $<$<CXX_COMPILER_ID:GNU>:-Wno-error=null-dereference>
-)

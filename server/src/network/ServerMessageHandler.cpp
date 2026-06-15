@@ -1,7 +1,7 @@
-#include "ServerMessageHandler.hpp"
+#include "server/src/network/ServerMessageHandler.hpp"
 
-#include "connection_id.hpp"
 #include "shared/logger/logger.hpp"
+#include "shared/network/connection_id.hpp"
 #include "shared/protocol/message.pb.h"
 
 #include <string_view>
@@ -48,7 +48,7 @@ asio::awaitable<protocol::ServerMessage> ServerMessageHandler::onMessage(
     co_return response;
 }
 
-void ServerMessageHandler::onDisconnect(connection_id connection_id)
+void ServerMessageHandler::onDisconnect(connection_id connection_id) noexcept
 {
     LOG(info, "Client[{}] disconnected", connection_id.id);
 }

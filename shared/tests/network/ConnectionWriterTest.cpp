@@ -1,5 +1,5 @@
-#include "server/src/network/Connection.hpp"
-#include "server/src/network/IMessageHandler.hpp"
+#include "shared/network/AMessageHandler.hpp"
+#include "shared/network/Connection.hpp"
 #include "shared/network/MessageChannel.hpp"
 #include "shared/protocol/message.pb.h"
 #include "utils/ConnectedSocketPair.hpp"
@@ -42,6 +42,7 @@ asio::awaitable<std::vector<std::uint64_t>> readServerMessageRequestIds(
 } // namespace
 
 using namespace s2d::test;
+using namespace s2d::network;
 
 TEST_CASE("Connection serializes enqueued sends through one write queue", "[network][connection]")
 {
@@ -55,8 +56,8 @@ TEST_CASE("Connection serializes enqueued sends through one write queue", "[netw
     response.set_status(s2d::protocol::STATUS_OK);
     handler.response = std::move(response);
 
-    auto connection = std::make_shared<s2d::network::Connection>(
-        s2d::network::connection_id{1},
+    auto connection = std::make_shared<network::utils::mock_connection_t>(
+        connection_id{1},
         std::move(server),
         handler,
         maxMessageBytes,

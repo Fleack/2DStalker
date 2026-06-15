@@ -93,14 +93,7 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(json spdlog asio fmt)
 
 if (BUILD_TESTS)
-    FetchContent_Declare(
-            Catch2
-            GIT_REPOSITORY https://github.com/catchorg/Catch2.git
-            GIT_TAG v3.13.0
-    )
-    FetchContent_MakeAvailable(Catch2)
-
-    include(CTest)
+    include(EnableTesting.cmake)
 endif ()
 
 # ====== Json headers ======

@@ -1,20 +1,29 @@
+param(
+    [Parameter(Mandatory = $true)]
+    [ValidateNotNullOrEmpty()]
+    [string]$ServerExe,
+
+    [Parameter(ValueFromRemainingArguments = $true)]
+    [string[]]$ServerArgs = @()
+)
+
 $ErrorActionPreference = "Stop"
 
-$repoRoot = Split-Path -Parent $PSScriptRoot
-$serverExe = Join-Path $repoRoot "cmake-build-debug\server\Server.exe"
 $runtimeBin = "C:\msys64\ucrt64\bin"
 
-if (-not (Test-Path -Path $runtimeBin -PathType Container))
+if (-not (Test-Path -LiteralPath $runtimeBin -PathType Container))
 {
     throw "Runtime directory not found: $runtimeBin"
 }
 
-if (-not (Test-Path -Path $serverExe -PathType Leaf))
+if (-not (Test-Path -LiteralPath $ServerExe -PathType Leaf))
 {
-    throw "Server executable not found: $serverExe"
+    throw "Server executable not found: $ServerExe"
 }
+
+$serverExePath = Resolve-Path -LiteralPath $ServerExe
 
 $env:PATH = "$runtimeBin;$env:PATH"
 
-& $serverExe
+& $serverExePath.ProviderPath @ServerArgs
 exit $LASTEXITCODE

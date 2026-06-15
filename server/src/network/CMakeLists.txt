@@ -3,17 +3,11 @@ add_library(ServerNetwork
         ServerMessageHandler.cpp
         TcpServer.cpp)
 
-target_link_libraries(ServerNetwork PUBLIC Shared)
-
 target_include_directories(ServerNetwork PUBLIC
         ${PROJECT_SOURCE_DIR}
 )
 
-target_link_libraries(ServerNetwork PRIVATE asio_headers)
-
-if (WIN32)
-    target_link_libraries(ServerNetwork PRIVATE
-            ws2_32
-            mswsock
-    )
-endif ()
+target_link_libraries(ServerNetwork PUBLIC
+        SharedNetwork
+        SharedProtocol
+        SharedLogger)

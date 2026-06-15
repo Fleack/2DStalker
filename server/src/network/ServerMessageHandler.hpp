@@ -1,7 +1,7 @@
 #pragma once
 
+#include "shared/network/AMessageHandler.hpp"
 #include "shared/protocol/message.pb.h"
-#include "shared/src/shared/network/AMessageHandler.hpp"
 
 #include <asio/awaitable.hpp>
 

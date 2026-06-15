@@ -1,7 +1,7 @@
+#include "shared/network/AMessageHandler.hpp"
+#include "shared/network/Connection.hpp"
 #include "shared/network/MessageChannel.hpp"
 #include "shared/protocol/message.pb.h"
-#include "shared/src/shared/network/AMessageHandler.hpp"
-#include "shared/src/shared/network/Connection.hpp"
 #include "utils/ConnectedSocketPair.hpp"
 #include "utils/MockMessageHandler.hpp"
 

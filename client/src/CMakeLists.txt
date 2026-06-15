@@ -12,7 +12,9 @@ add_executable(Client
 add_subdirectory(network)
 
 target_link_libraries(Client PRIVATE
-        Shared
+        SharedNetwork
+        SharedLogger
+        SharedProtocol
         sfml-graphics
         sfml-window
         sfml-system

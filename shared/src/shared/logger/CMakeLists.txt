@@ -2,8 +2,7 @@ add_library(SharedLogger INTERFACE)
 
 target_link_libraries(SharedLogger INTERFACE
         fmt::fmt
+        spdlog::spdlog
 )
 
-target_link_libraries(Shared INTERFACE
-        SharedLogger
-)
+target_include_directories(SharedLogger INTERFACE ${PROJECT_SOURCE_DIR}/shared/src)

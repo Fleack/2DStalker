@@ -2,7 +2,7 @@
 #include "network/TcpServer.hpp"
 #include "network/tcp_server_config.hpp"
 #include "shared/logger/logger.hpp"
-#include "shared/src/shared/network/Connection.hpp"
+#include "shared/network/Connection.hpp"
 
 #include <asio.hpp>
 #include <cstdint>

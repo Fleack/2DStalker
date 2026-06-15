@@ -1,9 +1,15 @@
 s2d_add_test(
         connection-writer-test
         SOURCES
-        ConnectionWriterTest.cpp)
+        ConnectionWriterTest.cpp
+        LIBS
+        SharedNetwork
+        SharedProtocol)
 
 s2d_add_test(
         message-channel-test
         SOURCES
-        MessageChannelTest.cpp)
+        MessageChannelTest.cpp
+        LIBS
+        SharedNetwork
+        SharedProtocol)

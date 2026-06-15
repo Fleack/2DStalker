@@ -1,8 +1,8 @@
 #pragma once
 
 #include "server/src/network/ServerConnection.hpp"
-#include "shared/src/shared/network/Connection.hpp"
-#include "shared/src/shared/network/connection_id.hpp"
+#include "shared/network/Connection.hpp"
+#include "shared/network/connection_id.hpp"
 
 #include <memory>
 #include <unordered_map>

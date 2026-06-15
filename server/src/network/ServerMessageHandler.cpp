@@ -1,8 +1,8 @@
 #include "server/src/network/ServerMessageHandler.hpp"
 
 #include "shared/logger/logger.hpp"
+#include "shared/network/connection_id.hpp"
 #include "shared/protocol/message.pb.h"
-#include "shared/src/shared/network/connection_id.hpp"
 
 #include <string_view>
 

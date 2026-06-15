@@ -5,7 +5,7 @@ add_executable(Server
 )
 
 target_link_libraries(Server PRIVATE
-        Shared
+        SharedProtocol
         ServerNetwork
 )
 enable_gcc_flags(Server)

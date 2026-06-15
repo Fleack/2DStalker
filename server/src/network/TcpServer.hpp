@@ -1,7 +1,7 @@
 #pragma once
 
-#include "ConnectionManager.hpp"
-#include "network_config.hpp"
+#include "server/src/network/ServerConnectionManager.hpp"
+#include "server/src/network/tcp_server_config.hpp"
 
 #include <asio/awaitable.hpp>
 
@@ -16,7 +16,7 @@ namespace s2d::network
 class TcpServer
 {
 public:
-    TcpServer(asio::io_context& io, network_config config, IMessageHandler& handler);
+    TcpServer(asio::io_context& io, tcp_server_config config, ServerMessageHandler& handler);
 
     ~TcpServer();
 
@@ -30,9 +30,9 @@ public:
 
 private:
     asio::ip::tcp::acceptor m_acceptor;
-    network_config m_config;
-    IMessageHandler& m_handler;
-    ConnectionManager m_connectionManager;
+    tcp_server_config m_config;
+    ServerMessageHandler& m_handler;
+    ServerConnectionManager m_connectionManager;
     bool m_stopped{false};
 };
 } // namespace s2d::network

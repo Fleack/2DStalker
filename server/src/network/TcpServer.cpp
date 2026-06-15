@@ -1,6 +1,6 @@
-#include "TcpServer.hpp"
+#include "server/src/network/TcpServer.hpp"
 
-#include "network_config.hpp"
+#include "server/src/network/tcp_server_config.hpp"
 #include "shared/logger/logger.hpp"
 
 #include <utility>
@@ -12,7 +12,7 @@
 namespace s2d::network
 {
 
-TcpServer::TcpServer(asio::io_context& io, network_config config, IMessageHandler& handler)
+TcpServer::TcpServer(asio::io_context& io, tcp_server_config config, ServerMessageHandler& handler)
     : m_acceptor(io)
     , m_config(config)
     , m_handler(handler)

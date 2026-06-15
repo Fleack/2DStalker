@@ -1,8 +1,8 @@
-#include "network/Connection.hpp"
 #include "network/ServerMessageHandler.hpp"
 #include "network/TcpServer.hpp"
-#include "network/network_config.hpp"
+#include "network/tcp_server_config.hpp"
 #include "shared/logger/logger.hpp"
+#include "shared/src/shared/network/Connection.hpp"
 
 #include <asio.hpp>
 #include <cstdint>
@@ -16,7 +16,7 @@ int main()
     try
     {
         asio::io_context io;
-        s2d::network::network_config cfg;
+        s2d::network::tcp_server_config cfg;
         s2d::network::ServerMessageHandler handler;
         s2d::network::TcpServer server{io, cfg, handler};
 

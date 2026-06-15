@@ -4,7 +4,7 @@
 
 namespace s2d::network
 {
-struct network_config
+struct tcp_server_config
 {
     std::uint16_t port = 1234;
     std::uint32_t max_message_bytes = 1024 * 1024;

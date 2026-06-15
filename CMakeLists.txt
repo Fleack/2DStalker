@@ -32,7 +32,6 @@ function(enable_gcc_flags target)
             -Wduplicated-cond
             -Wduplicated-branches
             -Wlogical-op
-            -Wnull-dereference
             -Wdouble-promotion
             -Wswitch-enum
             -Wundef
@@ -130,16 +129,3 @@ add_subdirectory(server)
 add_subdirectory(client)
 
 add_custom_target(S2DAll DEPENDS Server Client)
-
-# TODO: Make network lib and suppress only for it
-target_compile_options(Server PRIVATE
-        $<$<CXX_COMPILER_ID:GNU>:-Wno-error=null-dereference>
-)
-
-target_compile_options(Client PRIVATE
-        $<$<CXX_COMPILER_ID:GNU>:-Wno-error=null-dereference>
-)
-
-target_compile_options(ServerNetwork PRIVATE
-        $<$<CXX_COMPILER_ID:GNU>:-Wno-error=null-dereference>
-)

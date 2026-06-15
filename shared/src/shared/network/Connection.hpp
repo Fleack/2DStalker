@@ -4,7 +4,6 @@
 #include "shared/network/MessageChannel.hpp"
 #include "shared/network/NetworkSide.hpp"
 #include "shared/network/connection_id.hpp"
-#include "shared/protocol/message.pb.h"
 
 #include <atomic>
 #include <functional>

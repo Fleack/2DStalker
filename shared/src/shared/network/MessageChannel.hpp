@@ -1,7 +1,5 @@
 #pragma once
 
-#include "shared/protocol/message.pb.h"
-
 #include <vector>
 
 #include <asio/awaitable.hpp>

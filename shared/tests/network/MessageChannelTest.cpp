@@ -1,4 +1,5 @@
 #include "shared/network/MessageChannel.hpp"
+#include "shared/protocol/message.pb.h"
 #include "shared/tests/network/utils/ConnectedSocketPair.hpp"
 
 #include <asio/co_spawn.hpp>

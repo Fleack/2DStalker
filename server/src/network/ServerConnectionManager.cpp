@@ -1,4 +1,4 @@
-#include "ConnectionManager.hpp"
+#include "server/src/network/ServerConnectionManager.hpp"
 
 #include "shared/logger/logger.hpp"
 
@@ -8,9 +8,7 @@
 namespace s2d::network
 {
 
-// --- public ---
-
-std::shared_ptr<Connection> ConnectionManager::create(asio::ip::tcp::socket&& socket, IMessageHandler& handler, std::uint32_t max_message_bytes)
+std::shared_ptr<server_connection_t> ServerConnectionManager::create(asio::ip::tcp::socket&& socket, server_connection_t::handler_t& handler, std::uint32_t max_message_bytes)
 {
     if (m_stopped)
     {
@@ -20,7 +18,7 @@ std::shared_ptr<Connection> ConnectionManager::create(asio::ip::tcp::socket&& so
 
     auto const connectionId = ++m_nextConnectionId;
 
-    auto connection = std::make_shared<Connection>(
+    auto connection = std::make_shared<server_connection_t>(
         connectionId,
         std::move(socket),
         handler,
@@ -31,7 +29,7 @@ std::shared_ptr<Connection> ConnectionManager::create(asio::ip::tcp::socket&& so
     return connection;
 }
 
-bool ConnectionManager::remove(connection_id id)
+bool ServerConnectionManager::remove(connection_id id)
 {
     if (m_stopped)
     {
@@ -49,7 +47,7 @@ bool ConnectionManager::remove(connection_id id)
     return true;
 }
 
-std::shared_ptr<Connection> ConnectionManager::get(connection_id id) const
+std::shared_ptr<server_connection_t> ServerConnectionManager::get(connection_id id) const
 {
     if (m_stopped)
     {
@@ -66,7 +64,7 @@ std::shared_ptr<Connection> ConnectionManager::get(connection_id id) const
     return it->second;
 }
 
-void ConnectionManager::send(connection_id id, protocol::ServerMessage const& message) const
+void ServerConnectionManager::send(connection_id id, protocol::ServerMessage const& message) const
 {
     if (m_stopped)
     {
@@ -80,7 +78,7 @@ void ConnectionManager::send(connection_id id, protocol::ServerMessage const& me
     }
 }
 
-void ConnectionManager::broadcast(protocol::ServerMessage const& message) const
+void ServerConnectionManager::broadcast(protocol::ServerMessage const& message) const
 {
     if (m_stopped)
     {
@@ -96,7 +94,7 @@ void ConnectionManager::broadcast(protocol::ServerMessage const& message) const
     }
 }
 
-void ConnectionManager::stopAll() noexcept
+void ServerConnectionManager::stopAll() noexcept
 {
     if (std::exchange(m_stopped, true))
     {
@@ -112,12 +110,10 @@ void ConnectionManager::stopAll() noexcept
     }
 }
 
-// --- private ---
-
-std::vector<std::shared_ptr<Connection>> ConnectionManager::makeSnapshot() const
+std::vector<std::shared_ptr<server_connection_t>> ServerConnectionManager::makeSnapshot() const
 {
     auto values = m_connections | std::views::values;
-    return std::ranges::to<std::vector<std::shared_ptr<Connection>>>(values);
+    return std::ranges::to<std::vector<std::shared_ptr<server_connection_t>>>(values);
 }
 
 } // namespace s2d::network

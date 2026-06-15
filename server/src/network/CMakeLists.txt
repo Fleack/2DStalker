@@ -1,7 +1,5 @@
 add_library(ServerNetwork
-        Connection.cpp
-        ConnectionWriter.cpp
-        ConnectionManager.cpp
+        ServerConnectionManager.cpp
         ServerMessageHandler.cpp
         TcpServer.cpp)
 

@@ -1,3 +1,4 @@
+add_subdirectory(game)
 add_subdirectory(network)
 
 add_executable(Server
@@ -5,7 +6,7 @@ add_executable(Server
 )
 
 target_link_libraries(Server PRIVATE
-        SharedProtocol
+        ServerGame
         ServerNetwork
 )
 enable_gcc_flags(Server)

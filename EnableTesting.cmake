@@ -26,4 +26,10 @@ function(s2d_add_test target_name)
     )
 
     add_test(NAME ${target_name} COMMAND ${target_name})
+
+    if (MINGW)
+        get_filename_component(S2D_CXX_RUNTIME_DIR "${CMAKE_CXX_COMPILER}" DIRECTORY)
+        set_tests_properties(${target_name} PROPERTIES
+                ENVIRONMENT_MODIFICATION "PATH=path_list_prepend:${S2D_CXX_RUNTIME_DIR}")
+    endif ()
 endfunction()

@@ -7,7 +7,7 @@ namespace s2d::network
 {
 struct connection_id
 {
-    std::uint64_t id;
+    std::uint16_t id;
 
     auto operator<=>(connection_id const& lhs) const noexcept = default;
 
@@ -31,6 +31,6 @@ struct std::hash<s2d::network::connection_id>
 {
     std::size_t operator()(s2d::network::connection_id const& v) const noexcept
     {
-        return std::hash<uint64_t>{}(v.id);
+        return std::hash<uint16_t>{}(v.id);
     }
 };

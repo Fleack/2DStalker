@@ -67,7 +67,7 @@ ClientMessage {
 ServerMessage {
   request_id: 2
   status: STATUS_OK
-  state_snapshot { state_json: "{\"world\":\"bootstrap\",\"players\":[]}" }
+  state_snapshot { state_json: "{\"world\":\"bootstrap\",\"map\":{\"width\":32,\"height\":18},\"players\":[{\"id\":1,\"position\":{\"x\":0,\"y\":0}}]}" }
 }
 ```
 

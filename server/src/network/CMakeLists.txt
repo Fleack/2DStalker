@@ -8,6 +8,7 @@ target_include_directories(ServerNetwork PUBLIC
 )
 
 target_link_libraries(ServerNetwork PUBLIC
+        ServerGame
         SharedNetwork
         SharedProtocol
         SharedLogger)

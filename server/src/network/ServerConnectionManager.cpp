@@ -3,12 +3,13 @@
 #include "shared/logger/logger.hpp"
 
 #include <ranges>
+#include <stdexcept>
 #include <utility>
 
 namespace s2d::network
 {
 
-std::shared_ptr<server_connection_t> ServerConnectionManager::create(asio::ip::tcp::socket&& socket, server_connection_t::handler_t& handler, std::uint32_t max_message_bytes)
+std::shared_ptr<server_connection_t> ServerConnectionManager::create(asio::ip::tcp::socket&& socket, ServerMessageHandler& handler, std::uint32_t max_message_bytes)
 {
     if (m_stopped)
     {
@@ -22,15 +23,35 @@ std::shared_ptr<server_connection_t> ServerConnectionManager::create(asio::ip::t
         throw std::runtime_error("Too many connections");
     }
 
-    auto connection = std::make_shared<server_connection_t>(
+    auto connection = server_connection_t::create(
         connectionId,
         std::move(socket),
-        handler,
-        max_message_bytes,
-        [this](connection_id id) { remove(id); });
+        server_connection_t::Config{.maxMessageBytes = max_message_bytes},
+        [this, &handler](connection_id id, protocol::ClientMessage message) {
+            return handleMessage(handler, id, std::move(message));
+        },
+        [this, &handler](connection_id id) {
+            handleDisconnect(handler, id);
+        });
     m_connections.emplace(connectionId, connection);
 
     return connection;
+}
+
+asio::awaitable<void> ServerConnectionManager::handleMessage(
+    ServerMessageHandler& handler,
+    connection_id id,
+    protocol::ClientMessage message) const
+{
+    auto response = co_await handler.onMessage(id, message);
+    response.set_request_id(message.request_id());
+    send(id, response);
+}
+
+void ServerConnectionManager::handleDisconnect(ServerMessageHandler& handler, connection_id id)
+{
+    handler.onDisconnect(id);
+    remove(id);
 }
 
 bool ServerConnectionManager::remove(connection_id id)

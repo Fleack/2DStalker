@@ -1,9 +1,11 @@
 #pragma once
 
-#include "server/src/network/ServerConnection.hpp"
+#include "server/src/network/ServerMessageHandler.hpp"
 #include "shared/network/Connection.hpp"
 #include "shared/network/connection_id.hpp"
+#include "shared/protocol/message.pb.h"
 
+#include <cstdint>
 #include <memory>
 #include <unordered_map>
 #include <vector>
@@ -11,12 +13,14 @@
 namespace s2d::network
 {
 
+using server_connection_t = Connection<protocol::ClientMessage, protocol::ServerMessage>;
+
 class ServerConnectionManager
 {
 public:
     ServerConnectionManager() = default;
 
-    std::shared_ptr<server_connection_t> create(asio::ip::tcp::socket&& socket, server_connection_t::handler_t& handler, std::uint32_t max_message_bytes);
+    std::shared_ptr<server_connection_t> create(asio::ip::tcp::socket&& socket, ServerMessageHandler& handler, std::uint32_t max_message_bytes);
     bool remove(connection_id id);
     std::shared_ptr<server_connection_t> get(connection_id id) const;
 
@@ -26,6 +30,9 @@ public:
     void stopAll() noexcept;
 
 private:
+    asio::awaitable<void> handleMessage(ServerMessageHandler& handler, connection_id id, protocol::ClientMessage message) const;
+    void handleDisconnect(ServerMessageHandler& handler, connection_id id);
+
     std::vector<std::shared_ptr<server_connection_t>> makeSnapshot() const;
 
 private:

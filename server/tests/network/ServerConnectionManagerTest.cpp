@@ -6,6 +6,8 @@
 #include "shared/tests/network/utils/network_test_constants.hpp"
 #include "shared/tests/network/utils/protocol_messages.hpp"
 
+#include <utility>
+
 #include <asio/awaitable.hpp>
 #include <catch2/catch_test_macros.hpp>
 

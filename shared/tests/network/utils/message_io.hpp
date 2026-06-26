@@ -5,6 +5,7 @@
 
 #include <chrono>
 #include <cstdint>
+#include <utility>
 
 #include <asio/awaitable.hpp>
 #include <asio/ip/tcp.hpp>
@@ -33,11 +34,11 @@ asio::awaitable<Message> read_message(
 template <typename Message>
 asio::awaitable<void> write_message(
     asio::ip::tcp::socket& socket,
-    Message const& message,
+    Message message,
     std::uint32_t max_bytes = max_message_bytes)
 {
     s2d::network::MessageChannel channel{max_bytes};
-    co_await channel.writeMessage(socket, message);
+    co_await channel.writeMessage(socket, std::move(message));
 }
 
 inline asio::awaitable<std::size_t> available_bytes_after_wait(

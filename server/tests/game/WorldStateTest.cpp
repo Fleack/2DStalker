@@ -1,42 +1,22 @@
 #include "server/src/game/WorldState.hpp"
+#include "utils/game_fixtures.hpp"
+#include "utils/world_test_utils.hpp"
 
-#include <optional>
 #include <string>
+#include <string_view>
 
 #include <catch2/catch_test_macros.hpp>
-#include <nlohmann/json.hpp>
 
 namespace s2d::game
 {
-namespace
+using s2d::test::game::parse_world_json;
+using s2d::test::game::require_json_player;
+
+TEST_CASE_METHOD(
+    s2d::test::game::world_state_fixture,
+    "WorldState::createInitial creates bootstrap empty world",
+    "[WorldState]")
 {
-
-nlohmann::json parseWorldJson(WorldState const& world)
-{
-    return nlohmann::json::parse(world.toJson());
-}
-
-void requirePosition(nlohmann::json const& json, Position const& position)
-{
-    REQUIRE(json.at("x").get<decltype(position.x)>() == position.x);
-    REQUIRE(json.at("y").get<decltype(position.y)>() == position.y);
-}
-
-void requirePlayerJson(
-    nlohmann::json const& json,
-    player_id expectedId,
-    Position const& expectedPosition)
-{
-    REQUIRE(json.at("id").get<player_id>() == expectedId);
-    requirePosition(json.at("position"), expectedPosition);
-}
-
-} // namespace
-
-TEST_CASE("WorldState::createInitial creates bootstrap empty world", "[WorldState]")
-{
-    auto const world = WorldState::createInitial();
-
     SECTION("creates expected map")
     {
         REQUIRE(world.map().name == "bootstrap");
@@ -52,7 +32,7 @@ TEST_CASE("WorldState::createInitial creates bootstrap empty world", "[WorldStat
 
     SECTION("serializes empty world")
     {
-        auto const json = parseWorldJson(world);
+        auto const json = parse_world_json(world);
 
         REQUIRE(json.at("world") == "bootstrap");
         REQUIRE(json.at("map").at("width") == 32);
@@ -74,7 +54,7 @@ TEST_CASE("WorldState can be created with custom map", "[WorldState]")
     REQUIRE(world.map().height == mapHeight);
     REQUIRE(world.players().empty());
 
-    auto const json = parseWorldJson(world);
+    auto const json = parse_world_json(world);
 
     REQUIRE(json.at("world") == mapName);
     REQUIRE(json.at("map").at("width") == mapWidth);
@@ -82,18 +62,20 @@ TEST_CASE("WorldState can be created with custom map", "[WorldState]")
     REQUIRE(json.at("players").empty());
 }
 
-TEST_CASE("WorldState::player returns nullopt for unknown player", "[WorldState]")
+TEST_CASE_METHOD(
+    s2d::test::game::world_state_fixture,
+    "WorldState::player returns nullopt for unknown player",
+    "[WorldState]")
 {
-    auto world = WorldState::createInitial();
-
     REQUIRE_FALSE(world.player(player_id{1}).has_value());
     REQUIRE_FALSE(world.player(player_id{42}).has_value());
 }
 
-TEST_CASE("WorldState::addPlayer adds players with unique sequential ids", "[WorldState]")
+TEST_CASE_METHOD(
+    s2d::test::game::world_state_fixture,
+    "WorldState::addPlayer adds players with unique sequential ids",
+    "[WorldState]")
 {
-    auto world = WorldState::createInitial();
-
     auto const firstId = world.addPlayer();
     auto const secondId = world.addPlayer();
 
@@ -118,10 +100,11 @@ TEST_CASE("WorldState::addPlayer adds players with unique sequential ids", "[Wor
     REQUIRE(world.players().contains(secondId));
 }
 
-TEST_CASE("WorldState::removePlayer removes existing player", "[WorldState]")
+TEST_CASE_METHOD(
+    s2d::test::game::world_state_fixture,
+    "WorldState::removePlayer removes existing player",
+    "[WorldState]")
 {
-    auto world = WorldState::createInitial();
-
     auto const id = world.addPlayer();
 
     REQUIRE(world.player(id).has_value());
@@ -133,10 +116,11 @@ TEST_CASE("WorldState::removePlayer removes existing player", "[WorldState]")
     REQUIRE_FALSE(world.player(id).has_value());
 }
 
-TEST_CASE("WorldState::removePlayer returns false for unknown player", "[WorldState]")
+TEST_CASE_METHOD(
+    s2d::test::game::world_state_fixture,
+    "WorldState::removePlayer returns false for unknown player",
+    "[WorldState]")
 {
-    auto world = WorldState::createInitial();
-
     SECTION("empty world")
     {
         REQUIRE_FALSE(world.removePlayer(player_id{1}));
@@ -155,10 +139,11 @@ TEST_CASE("WorldState::removePlayer returns false for unknown player", "[WorldSt
     }
 }
 
-TEST_CASE("WorldState::removePlayer does not reuse removed ids", "[WorldState]")
+TEST_CASE_METHOD(
+    s2d::test::game::world_state_fixture,
+    "WorldState::removePlayer does not reuse removed ids",
+    "[WorldState]")
 {
-    auto world = WorldState::createInitial();
-
     auto const firstId = world.addPlayer();
 
     REQUIRE(world.removePlayer(firstId));
@@ -171,18 +156,20 @@ TEST_CASE("WorldState::removePlayer does not reuse removed ids", "[WorldState]")
     REQUIRE(world.player(secondId).has_value());
 }
 
-TEST_CASE("WorldState::movePlayer returns false for unknown player", "[WorldState]")
+TEST_CASE_METHOD(
+    s2d::test::game::world_state_fixture,
+    "WorldState::movePlayer returns false for unknown player",
+    "[WorldState]")
 {
-    auto world = WorldState::createInitial();
-
     REQUIRE_FALSE(world.movePlayer(player_id{1}, Position{1, 2}));
     REQUIRE(world.players().empty());
 }
 
-TEST_CASE("WorldState::movePlayer moves existing player", "[WorldState]")
+TEST_CASE_METHOD(
+    s2d::test::game::world_state_fixture,
+    "WorldState::movePlayer moves existing player",
+    "[WorldState]")
 {
-    auto world = WorldState::createInitial();
-
     auto const id = world.addPlayer();
     auto const before = world.player(id);
 
@@ -200,10 +187,11 @@ TEST_CASE("WorldState::movePlayer moves existing player", "[WorldState]")
     REQUIRE(after->position.y == before->position.y + delta.y);
 }
 
-TEST_CASE("WorldState::movePlayer can move player multiple times", "[WorldState]")
+TEST_CASE_METHOD(
+    s2d::test::game::world_state_fixture,
+    "WorldState::movePlayer can move player multiple times",
+    "[WorldState]")
 {
-    auto world = WorldState::createInitial();
-
     auto const id = world.addPlayer();
     auto const initial = world.player(id);
 
@@ -220,10 +208,11 @@ TEST_CASE("WorldState::movePlayer can move player multiple times", "[WorldState]
     REQUIRE(player->position.y == initial->position.y + 10);
 }
 
-TEST_CASE("WorldState::movePlayer does not affect other players", "[WorldState]")
+TEST_CASE_METHOD(
+    s2d::test::game::world_state_fixture,
+    "WorldState::movePlayer does not affect other players",
+    "[WorldState]")
 {
-    auto world = WorldState::createInitial();
-
     auto const firstId = world.addPlayer();
     auto const secondId = world.addPlayer();
 
@@ -248,10 +237,11 @@ TEST_CASE("WorldState::movePlayer does not affect other players", "[WorldState]"
     REQUIRE(secondAfter->position.y == secondBefore->position.y);
 }
 
-TEST_CASE("WorldState::toJson serializes players in id order", "[WorldState]")
+TEST_CASE_METHOD(
+    s2d::test::game::world_state_fixture,
+    "WorldState::toJson serializes players in id order",
+    "[WorldState]")
 {
-    auto world = WorldState::createInitial();
-
     auto const firstId = world.addPlayer();
     auto const secondId = world.addPlayer();
 
@@ -264,7 +254,7 @@ TEST_CASE("WorldState::toJson serializes players in id order", "[WorldState]")
     REQUIRE(firstPlayer.has_value());
     REQUIRE(secondPlayer.has_value());
 
-    auto const json = parseWorldJson(world);
+    auto const json = parse_world_json(world);
 
     REQUIRE(json.at("world") == "bootstrap");
     REQUIRE(json.at("map").at("width") == 32);
@@ -276,14 +266,15 @@ TEST_CASE("WorldState::toJson serializes players in id order", "[WorldState]")
     REQUIRE(players.size() == 2);
 
     // std::map хранит игроков по id, значит сериализация стабильна по возрастанию id.
-    requirePlayerJson(players.at(0), firstId, firstPlayer->position);
-    requirePlayerJson(players.at(1), secondId, secondPlayer->position);
+    require_json_player(players.at(0), firstId, firstPlayer->position);
+    require_json_player(players.at(1), secondId, secondPlayer->position);
 }
 
-TEST_CASE("WorldState::toJson does not serialize removed players", "[WorldState]")
+TEST_CASE_METHOD(
+    s2d::test::game::world_state_fixture,
+    "WorldState::toJson does not serialize removed players",
+    "[WorldState]")
 {
-    auto world = WorldState::createInitial();
-
     auto const removedId = world.addPlayer();
     auto const aliveId = world.addPlayer();
 
@@ -294,13 +285,13 @@ TEST_CASE("WorldState::toJson does not serialize removed players", "[WorldState]
 
     REQUIRE(alivePlayer.has_value());
 
-    auto const json = parseWorldJson(world);
+    auto const json = parse_world_json(world);
     auto const& players = json.at("players");
 
     REQUIRE(players.is_array());
     REQUIRE(players.size() == 1);
 
-    requirePlayerJson(players.at(0), aliveId, alivePlayer->position);
+    require_json_player(players.at(0), aliveId, alivePlayer->position);
 }
 
 } // namespace s2d::game

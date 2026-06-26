@@ -87,7 +87,7 @@ TEST_CASE_METHOD(
         auto const available_bytes = co_await available_bytes_after_wait(server_socket);
         close_socket(server_socket);
         co_return available_bytes;
-    }());
+    });
     auto sent = spawn(client->send(request));
 
     run();
@@ -117,16 +117,12 @@ TEST_CASE_METHOD(
         require_messages_equal(expected_first_request, first_received);
         require_messages_equal(expected_second_request, second_received);
 
-        co_await write_message(
-            server_socket,
-            make_pong_response(expected_second_request.request_id()));
-        co_await write_message(
-            server_socket,
-            make_pong_response(expected_first_request.request_id()));
+        co_await write_message(server_socket, make_pong_response(expected_second_request.request_id()));
+        co_await write_message(server_socket, make_pong_response(expected_first_request.request_id()));
 
         close_socket(server_socket);
         co_return;
-    }());
+    });
     auto first_sent = spawn(client->send(first_request));
     auto second_sent = spawn(client->send(second_request));
 
@@ -164,7 +160,7 @@ TEST_CASE_METHOD(
         co_await write_message(server_socket, response);
         close_socket(server_socket);
         co_return;
-    }());
+    });
 
     run();
 
@@ -192,7 +188,7 @@ TEST_CASE_METHOD(
         auto const available_bytes = co_await available_bytes_after_wait(server_socket);
         close_socket(server_socket);
         co_return available_bytes;
-    }());
+    });
     auto sent = spawn(client->send(request));
 
     run();

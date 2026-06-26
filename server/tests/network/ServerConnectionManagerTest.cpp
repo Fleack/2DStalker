@@ -39,7 +39,7 @@ TEST_CASE_METHOD(
         auto response = co_await read_message<s2d::protocol::ServerMessage>(sockets.client);
         close_socket(sockets.client);
         co_return response;
-    }());
+    });
 
     run();
 

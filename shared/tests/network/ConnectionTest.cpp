@@ -56,7 +56,7 @@ TEST_CASE_METHOD(
         auto const bytes = co_await available_bytes_after_wait(sockets.client);
         close_socket(sockets.client);
         co_return bytes;
-    }());
+    });
 
     run();
 
@@ -99,7 +99,7 @@ TEST_CASE_METHOD(
         auto message = co_await read_message<s2d::protocol::ServerMessage>(sockets.client);
         close_socket(sockets.client);
         co_return message;
-    }());
+    });
 
     run();
 

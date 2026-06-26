@@ -60,7 +60,7 @@ TEST_CASE_METHOD(
         }
 
         co_return request_ids;
-    }());
+    });
 
     run();
 

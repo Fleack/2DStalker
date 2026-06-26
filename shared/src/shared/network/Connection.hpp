@@ -254,7 +254,7 @@ private:
             try
             {
                 LOG(debug, "Sending message to connection[id={}]", m_id.id);
-                co_await m_channel.writeMessage(m_socket, message);
+                co_await m_channel.writeMessage(m_socket, std::move(message));
             }
             catch (std::exception const& e)
             {

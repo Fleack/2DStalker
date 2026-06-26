@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <optional>
 #include <stdexcept>
+#include <utility>
 
 #include <asio/awaitable.hpp>
 #include <catch2/catch_test_macros.hpp>

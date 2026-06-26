@@ -1,5 +1,6 @@
 #include "shared/protocol/message.pb.h"
 #include "utils/message_channel_fixture.hpp"
+#include "utils/protocol_messages.hpp"
 
 #include <catch2/catch_test_macros.hpp>
 

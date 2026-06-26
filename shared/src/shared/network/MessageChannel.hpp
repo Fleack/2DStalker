@@ -1,5 +1,9 @@
 #pragma once
 
+#include <bit>
+#include <cstdint>
+#include <stdexcept>
+#include <string>
 #include <vector>
 
 #include <asio/awaitable.hpp>
@@ -19,7 +23,7 @@ public:
     asio::awaitable<MessageType> readMessage(asio::ip::tcp::socket& socket);
 
     template <class MessageType>
-    asio::awaitable<void> writeMessage(asio::ip::tcp::socket& socket, MessageType const& message) const;
+    asio::awaitable<void> writeMessage(asio::ip::tcp::socket& socket, MessageType message) const;
 
 private:
     static std::uint32_t toNetworkOrder(std::uint32_t value) noexcept;
@@ -59,9 +63,8 @@ asio::awaitable<MessageType> MessageChannel::readMessage(asio::ip::tcp::socket& 
 }
 
 template <class MessageType>
-asio::awaitable<void> MessageChannel::writeMessage(asio::ip::tcp::socket& socket, MessageType const& message) const
+asio::awaitable<void> MessageChannel::writeMessage(asio::ip::tcp::socket& socket, MessageType message) const
 {
-
     std::string data;
     if (!message.SerializeToString(&data))
     {

@@ -1,12 +1,15 @@
-target_sources(Client PRIVATE
+add_library(ClientNetwork STATIC
         Client.cpp
 )
 
-target_link_libraries(Client PRIVATE asio_headers)
+target_include_directories(ClientNetwork PUBLIC
+        ${PROJECT_SOURCE_DIR}/client/src
+)
 
-if (WIN32)
-    target_link_libraries(Client PRIVATE
-            ws2_32
-            mswsock
-    )
-endif ()
+target_link_libraries(ClientNetwork PUBLIC
+        SharedNetwork
+        SharedProtocol
+        SharedLogger
+)
+
+enable_gcc_flags(ClientNetwork)

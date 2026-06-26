@@ -1,89 +1,39 @@
 #include "server/src/game/WorldService.hpp"
+#include "utils/game_fixtures.hpp"
+#include "utils/game_test_constants.hpp"
+#include "utils/world_test_utils.hpp"
 
-#include <optional>
 #include <string>
+#include <utility>
 
 #include <catch2/catch_test_macros.hpp>
-#include <nlohmann/json.hpp>
 
 namespace s2d::game
 {
-namespace
-{
+using s2d::test::game::connection_1;
+using s2d::test::game::connection_2;
+using s2d::test::game::connection_3;
+using s2d::test::game::make_interact_action;
+using s2d::test::game::make_move_action;
+using s2d::test::game::make_wait_action;
+using s2d::test::game::parse_snapshot;
+using s2d::test::game::require_json_player;
+using s2d::test::game::require_no_player;
+using s2d::test::game::require_player;
+using s2d::test::game::require_position;
 
-constexpr connection_key connection1{1};
-constexpr connection_key connection2{2};
-constexpr connection_key connection3{3};
-
-nlohmann::json parseSnapshot(WorldService const& service)
-{
-    return nlohmann::json::parse(service.snapshotJson());
-}
-
-void requireBootstrapMap(WorldService const& service)
+TEST_CASE_METHOD(
+    s2d::test::game::world_service_fixture,
+    "WorldService default constructor creates initial empty world",
+    "[WorldService]")
 {
     REQUIRE(service.state().map().name == "bootstrap");
     REQUIRE(service.state().map().width == 32);
     REQUIRE(service.state().map().height == 18);
-}
-
-void requireNoPlayer(WorldService const& service, player_id player)
-{
-    REQUIRE_FALSE(service.state().player(player).has_value());
-}
-
-PlayerState requirePlayer(WorldService const& service, player_id player)
-{
-    auto const playerState = service.state().player(player);
-
-    REQUIRE(playerState.has_value());
-    REQUIRE(playerState->id == player);
-
-    return playerState.value();
-}
-
-void requirePosition(Position const& actual, Position const& expected)
-{
-    REQUIRE(actual.x == expected.x);
-    REQUIRE(actual.y == expected.y);
-}
-
-void requireJsonPlayer(
-    nlohmann::json const& json,
-    player_id expectedId,
-    Position const& expectedPosition)
-{
-    REQUIRE(json.at("id").get<player_id>() == expectedId);
-    REQUIRE(json.at("position").at("x").get<decltype(expectedPosition.x)>() == expectedPosition.x);
-    REQUIRE(json.at("position").at("y").get<decltype(expectedPosition.y)>() == expectedPosition.y);
-}
-
-WorldAction moveAction(Position delta)
-{
-    return WorldAction{MoveAction{delta}};
-}
-
-WorldAction interactAction()
-{
-    return WorldAction{InteractAction{}};
-}
-
-WorldAction waitAction()
-{
-    return WorldAction{WaitAction{}};
-}
-
-} // namespace
-
-TEST_CASE("WorldService default constructor creates initial empty world", "[WorldService]")
-{
-    WorldService service;
-
-    requireBootstrapMap(service);
 
     REQUIRE(service.state().players().empty());
 
-    auto const json = parseSnapshot(service);
+    auto const json = parse_snapshot(service);
 
     REQUIRE(json.at("world") == "bootstrap");
     REQUIRE(json.at("map").at("width") == 32);
@@ -102,7 +52,7 @@ TEST_CASE("WorldService can be constructed with custom WorldState", "[WorldServi
     REQUIRE(service.state().map().height == 50);
     REQUIRE(service.state().players().empty());
 
-    auto const json = parseSnapshot(service);
+    auto const json = parse_snapshot(service);
 
     REQUIRE(json.at("world") == "custom-map");
     REQUIRE(json.at("map").at("width") == 100);
@@ -110,40 +60,43 @@ TEST_CASE("WorldService can be constructed with custom WorldState", "[WorldServi
     REQUIRE(json.at("players").empty());
 }
 
-TEST_CASE("WorldService::connect creates player for new connection", "[WorldService]")
+TEST_CASE_METHOD(
+    s2d::test::game::world_service_fixture,
+    "WorldService::connect creates player for new connection",
+    "[WorldService]")
 {
-    WorldService service;
-
-    auto const player = service.connect(connection1);
+    auto const player = service.connect(connection_1);
 
     REQUIRE(player == player_id{1});
     REQUIRE(service.state().players().size() == 1);
 
-    auto const playerState = requirePlayer(service, player);
+    auto const playerState = require_player(service, player);
 
     REQUIRE(playerState.id == player);
 }
 
-TEST_CASE("WorldService::connect returns existing player for already connected connection", "[WorldService]")
+TEST_CASE_METHOD(
+    s2d::test::game::world_service_fixture,
+    "WorldService::connect returns existing player for already connected connection",
+    "[WorldService]")
 {
-    WorldService service;
-
-    auto const firstConnect = service.connect(connection1);
-    auto const secondConnect = service.connect(connection1);
+    auto const firstConnect = service.connect(connection_1);
+    auto const secondConnect = service.connect(connection_1);
 
     REQUIRE(secondConnect == firstConnect);
     REQUIRE(service.state().players().size() == 1);
 
-    requirePlayer(service, firstConnect);
+    require_player(service, firstConnect);
 }
 
-TEST_CASE("WorldService::connect creates independent players for different connections", "[WorldService]")
+TEST_CASE_METHOD(
+    s2d::test::game::world_service_fixture,
+    "WorldService::connect creates independent players for different connections",
+    "[WorldService]")
 {
-    WorldService service;
-
-    auto const playerA = service.connect(connection1);
-    auto const playerB = service.connect(connection2);
-    auto const playerC = service.connect(connection3);
+    auto const playerA = service.connect(connection_1);
+    auto const playerB = service.connect(connection_2);
+    auto const playerC = service.connect(connection_3);
 
     REQUIRE(playerA == player_id{1});
     REQUIRE(playerB == player_id{2});
@@ -151,201 +104,213 @@ TEST_CASE("WorldService::connect creates independent players for different conne
 
     REQUIRE(service.state().players().size() == 3);
 
-    requirePlayer(service, playerA);
-    requirePlayer(service, playerB);
-    requirePlayer(service, playerC);
+    require_player(service, playerA);
+    require_player(service, playerB);
+    require_player(service, playerC);
 }
 
-TEST_CASE("WorldService::disconnect unknown connection is no-op", "[WorldService]")
+TEST_CASE_METHOD(
+    s2d::test::game::world_service_fixture,
+    "WorldService::disconnect unknown connection is no-op",
+    "[WorldService]")
 {
-    WorldService service;
-
-    service.disconnect(connection1);
+    service.disconnect(connection_1);
 
     REQUIRE(service.state().players().empty());
 
-    auto const json = parseSnapshot(service);
+    auto const json = parse_snapshot(service);
 
     REQUIRE(json.at("players").empty());
 }
 
-TEST_CASE("WorldService::disconnect removes connected player", "[WorldService]")
+TEST_CASE_METHOD(
+    s2d::test::game::world_service_fixture,
+    "WorldService::disconnect removes connected player",
+    "[WorldService]")
 {
-    WorldService service;
-
-    auto const player = service.connect(connection1);
+    auto const player = service.connect(connection_1);
 
     REQUIRE(service.state().players().size() == 1);
-    requirePlayer(service, player);
+    require_player(service, player);
 
-    service.disconnect(connection1);
+    service.disconnect(connection_1);
 
     REQUIRE(service.state().players().empty());
-    requireNoPlayer(service, player);
+    require_no_player(service, player);
 }
 
-TEST_CASE("WorldService::disconnect removes only player for requested connection", "[WorldService]")
+TEST_CASE_METHOD(
+    s2d::test::game::world_service_fixture,
+    "WorldService::disconnect removes only player for requested connection",
+    "[WorldService]")
 {
-    WorldService service;
+    auto const playerA = service.connect(connection_1);
+    auto const playerB = service.connect(connection_2);
 
-    auto const playerA = service.connect(connection1);
-    auto const playerB = service.connect(connection2);
-
-    service.disconnect(connection1);
+    service.disconnect(connection_1);
 
     REQUIRE(service.state().players().size() == 1);
 
-    requireNoPlayer(service, playerA);
-    requirePlayer(service, playerB);
+    require_no_player(service, playerA);
+    require_player(service, playerB);
 }
 
-TEST_CASE("WorldService::disconnect can be called repeatedly for same connection", "[WorldService]")
+TEST_CASE_METHOD(
+    s2d::test::game::world_service_fixture,
+    "WorldService::disconnect can be called repeatedly for same connection",
+    "[WorldService]")
 {
-    WorldService service;
+    auto const player = service.connect(connection_1);
 
-    auto const player = service.connect(connection1);
-
-    service.disconnect(connection1);
-    service.disconnect(connection1);
-    service.disconnect(connection1);
+    service.disconnect(connection_1);
+    service.disconnect(connection_1);
+    service.disconnect(connection_1);
 
     REQUIRE(service.state().players().empty());
-    requireNoPlayer(service, player);
+    require_no_player(service, player);
 }
 
-TEST_CASE("WorldService reconnect after disconnect creates new player id", "[WorldService]")
+TEST_CASE_METHOD(
+    s2d::test::game::world_service_fixture,
+    "WorldService reconnect after disconnect creates new player id",
+    "[WorldService]")
 {
-    WorldService service;
+    auto const firstPlayer = service.connect(connection_1);
 
-    auto const firstPlayer = service.connect(connection1);
+    service.disconnect(connection_1);
 
-    service.disconnect(connection1);
-
-    auto const secondPlayer = service.connect(connection1);
+    auto const secondPlayer = service.connect(connection_1);
 
     REQUIRE(firstPlayer == player_id{1});
     REQUIRE(secondPlayer == player_id{2});
 
-    requireNoPlayer(service, firstPlayer);
-    requirePlayer(service, secondPlayer);
+    require_no_player(service, firstPlayer);
+    require_player(service, secondPlayer);
 
     REQUIRE(service.state().players().size() == 1);
 }
 
-TEST_CASE("WorldService::apply for unknown connection is no-op", "[WorldService]")
+TEST_CASE_METHOD(
+    s2d::test::game::world_service_fixture,
+    "WorldService::apply for unknown connection is no-op",
+    "[WorldService]")
 {
-    WorldService service;
-
-    service.apply(connection1, moveAction(Position{5, 7}));
-    service.apply(connection1, interactAction());
-    service.apply(connection1, waitAction());
+    service.apply(connection_1, make_move_action(Position{5, 7}));
+    service.apply(connection_1, make_interact_action());
+    service.apply(connection_1, make_wait_action());
 
     REQUIRE(service.state().players().empty());
 
-    auto const json = parseSnapshot(service);
+    auto const json = parse_snapshot(service);
 
     REQUIRE(json.at("players").empty());
 }
 
-TEST_CASE("WorldService::apply MoveAction moves connected player", "[WorldService]")
+TEST_CASE_METHOD(
+    s2d::test::game::world_service_fixture,
+    "WorldService::apply MoveAction moves connected player",
+    "[WorldService]")
 {
-    WorldService service;
+    auto const player = service.connect(connection_1);
+    auto const before = require_player(service, player);
 
-    auto const player = service.connect(connection1);
-    auto const before = requirePlayer(service, player);
+    service.apply(connection_1, make_move_action(Position{3, -2}));
 
-    service.apply(connection1, moveAction(Position{3, -2}));
-
-    auto const after = requirePlayer(service, player);
+    auto const after = require_player(service, player);
 
     REQUIRE(after.position.x == before.position.x + 3);
     REQUIRE(after.position.y == before.position.y - 2);
 }
 
-TEST_CASE("WorldService::apply MoveAction can be applied multiple times", "[WorldService]")
+TEST_CASE_METHOD(
+    s2d::test::game::world_service_fixture,
+    "WorldService::apply MoveAction can be applied multiple times",
+    "[WorldService]")
 {
-    WorldService service;
+    auto const player = service.connect(connection_1);
+    auto const initial = require_player(service, player);
 
-    auto const player = service.connect(connection1);
-    auto const initial = requirePlayer(service, player);
+    service.apply(connection_1, make_move_action(Position{10, 5}));
+    service.apply(connection_1, make_move_action(Position{-3, 7}));
+    service.apply(connection_1, make_move_action(Position{0, -2}));
 
-    service.apply(connection1, moveAction(Position{10, 5}));
-    service.apply(connection1, moveAction(Position{-3, 7}));
-    service.apply(connection1, moveAction(Position{0, -2}));
-
-    auto const after = requirePlayer(service, player);
+    auto const after = require_player(service, player);
 
     REQUIRE(after.position.x == initial.position.x + 7);
     REQUIRE(after.position.y == initial.position.y + 10);
 }
 
-TEST_CASE("WorldService::apply MoveAction affects only player bound to connection", "[WorldService]")
+TEST_CASE_METHOD(
+    s2d::test::game::world_service_fixture,
+    "WorldService::apply MoveAction affects only player bound to connection",
+    "[WorldService]")
 {
-    WorldService service;
+    auto const playerA = service.connect(connection_1);
+    auto const playerB = service.connect(connection_2);
 
-    auto const playerA = service.connect(connection1);
-    auto const playerB = service.connect(connection2);
+    auto const beforeA = require_player(service, playerA);
+    auto const beforeB = require_player(service, playerB);
 
-    auto const beforeA = requirePlayer(service, playerA);
-    auto const beforeB = requirePlayer(service, playerB);
+    service.apply(connection_1, make_move_action(Position{4, 9}));
 
-    service.apply(connection1, moveAction(Position{4, 9}));
-
-    auto const afterA = requirePlayer(service, playerA);
-    auto const afterB = requirePlayer(service, playerB);
+    auto const afterA = require_player(service, playerA);
+    auto const afterB = require_player(service, playerB);
 
     REQUIRE(afterA.position.x == beforeA.position.x + 4);
     REQUIRE(afterA.position.y == beforeA.position.y + 9);
 
-    requirePosition(afterB.position, beforeB.position);
+    require_position(afterB.position, beforeB.position);
 }
 
-TEST_CASE("WorldService::apply InteractAction is no-op for connected player", "[WorldService]")
+TEST_CASE_METHOD(
+    s2d::test::game::world_service_fixture,
+    "WorldService::apply InteractAction is no-op for connected player",
+    "[WorldService]")
 {
-    WorldService service;
+    auto const player = service.connect(connection_1);
+    auto const before = require_player(service, player);
 
-    auto const player = service.connect(connection1);
-    auto const before = requirePlayer(service, player);
+    service.apply(connection_1, make_interact_action());
 
-    service.apply(connection1, interactAction());
-
-    auto const after = requirePlayer(service, player);
+    auto const after = require_player(service, player);
 
     REQUIRE(after.id == before.id);
-    requirePosition(after.position, before.position);
+    require_position(after.position, before.position);
     REQUIRE(service.state().players().size() == 1);
 }
 
-TEST_CASE("WorldService::apply WaitAction is no-op for connected player", "[WorldService]")
+TEST_CASE_METHOD(
+    s2d::test::game::world_service_fixture,
+    "WorldService::apply WaitAction is no-op for connected player",
+    "[WorldService]")
 {
-    WorldService service;
+    auto const player = service.connect(connection_1);
+    auto const before = require_player(service, player);
 
-    auto const player = service.connect(connection1);
-    auto const before = requirePlayer(service, player);
+    service.apply(connection_1, make_wait_action());
 
-    service.apply(connection1, waitAction());
-
-    auto const after = requirePlayer(service, player);
+    auto const after = require_player(service, player);
 
     REQUIRE(after.id == before.id);
-    requirePosition(after.position, before.position);
+    require_position(after.position, before.position);
     REQUIRE(service.state().players().size() == 1);
 }
 
-TEST_CASE("WorldService::snapshotJson serializes connected players and their positions", "[WorldService]")
+TEST_CASE_METHOD(
+    s2d::test::game::world_service_fixture,
+    "WorldService::snapshotJson serializes connected players and their positions",
+    "[WorldService]")
 {
-    WorldService service;
+    auto const playerA = service.connect(connection_1);
+    auto const playerB = service.connect(connection_2);
 
-    auto const playerA = service.connect(connection1);
-    auto const playerB = service.connect(connection2);
+    service.apply(connection_1, make_move_action(Position{5, 1}));
+    service.apply(connection_2, make_move_action(Position{-2, 3}));
 
-    service.apply(connection1, moveAction(Position{5, 1}));
-    service.apply(connection2, moveAction(Position{-2, 3}));
+    auto const stateA = require_player(service, playerA);
+    auto const stateB = require_player(service, playerB);
 
-    auto const stateA = requirePlayer(service, playerA);
-    auto const stateB = requirePlayer(service, playerB);
-
-    auto const json = parseSnapshot(service);
+    auto const json = parse_snapshot(service);
 
     REQUIRE(json.at("world") == "bootstrap");
     REQUIRE(json.at("map").at("width") == 32);
@@ -356,63 +321,66 @@ TEST_CASE("WorldService::snapshotJson serializes connected players and their pos
     REQUIRE(players.is_array());
     REQUIRE(players.size() == 2);
 
-    requireJsonPlayer(players.at(0), playerA, stateA.position);
-    requireJsonPlayer(players.at(1), playerB, stateB.position);
+    require_json_player(players.at(0), playerA, stateA.position);
+    require_json_player(players.at(1), playerB, stateB.position);
 }
 
-TEST_CASE("WorldService::snapshotJson does not serialize disconnected players", "[WorldService]")
+TEST_CASE_METHOD(
+    s2d::test::game::world_service_fixture,
+    "WorldService::snapshotJson does not serialize disconnected players",
+    "[WorldService]")
 {
-    WorldService service;
+    auto const disconnectedPlayer = service.connect(connection_1);
+    auto const alivePlayer = service.connect(connection_2);
 
-    auto const disconnectedPlayer = service.connect(connection1);
-    auto const alivePlayer = service.connect(connection2);
+    service.apply(connection_1, make_move_action(Position{10, 20}));
+    service.apply(connection_2, make_move_action(Position{1, 2}));
 
-    service.apply(connection1, moveAction(Position{10, 20}));
-    service.apply(connection2, moveAction(Position{1, 2}));
+    service.disconnect(connection_1);
 
-    service.disconnect(connection1);
-
-    auto const aliveState = requirePlayer(service, alivePlayer);
+    auto const aliveState = require_player(service, alivePlayer);
 
     REQUIRE_FALSE(service.state().player(disconnectedPlayer).has_value());
 
-    auto const json = parseSnapshot(service);
+    auto const json = parse_snapshot(service);
     auto const& players = json.at("players");
 
     REQUIRE(players.is_array());
     REQUIRE(players.size() == 1);
 
-    requireJsonPlayer(players.at(0), alivePlayer, aliveState.position);
+    require_json_player(players.at(0), alivePlayer, aliveState.position);
 }
 
-TEST_CASE("WorldService connection binding is removed after disconnect", "[WorldService]")
+TEST_CASE_METHOD(
+    s2d::test::game::world_service_fixture,
+    "WorldService connection binding is removed after disconnect",
+    "[WorldService]")
 {
-    WorldService service;
+    auto const oldPlayer = service.connect(connection_1);
 
-    auto const oldPlayer = service.connect(connection1);
+    service.disconnect(connection_1);
 
-    service.disconnect(connection1);
-
-    service.apply(connection1, moveAction(Position{100, 100}));
+    service.apply(connection_1, make_move_action(Position{100, 100}));
 
     REQUIRE_FALSE(service.state().player(oldPlayer).has_value());
     REQUIRE(service.state().players().empty());
 }
 
-TEST_CASE("WorldService can connect same connection again after disconnect", "[WorldService]")
+TEST_CASE_METHOD(
+    s2d::test::game::world_service_fixture,
+    "WorldService can connect same connection again after disconnect",
+    "[WorldService]")
 {
-    WorldService service;
+    auto const oldPlayer = service.connect(connection_1);
 
-    auto const oldPlayer = service.connect(connection1);
+    service.disconnect(connection_1);
 
-    service.disconnect(connection1);
+    auto const newPlayer = service.connect(connection_1);
+    auto const before = require_player(service, newPlayer);
 
-    auto const newPlayer = service.connect(connection1);
-    auto const before = requirePlayer(service, newPlayer);
+    service.apply(connection_1, make_move_action(Position{2, 3}));
 
-    service.apply(connection1, moveAction(Position{2, 3}));
-
-    auto const after = requirePlayer(service, newPlayer);
+    auto const after = require_player(service, newPlayer);
 
     REQUIRE(newPlayer != oldPlayer);
     REQUIRE(after.position.x == before.position.x + 2);

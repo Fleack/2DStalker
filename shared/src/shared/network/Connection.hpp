@@ -1,40 +1,110 @@
 #pragma once
 
-#include "shared/network/ConnectionWriter.hpp"
+#include "shared/logger/logger.hpp"
 #include "shared/network/MessageChannel.hpp"
-#include "shared/network/NetworkSide.hpp"
 #include "shared/network/connection_id.hpp"
 
-#include <atomic>
+#include <cstdint>
+#include <deque>
 #include <functional>
 #include <memory>
+#include <stdexcept>
 #include <string>
+#include <utility>
 
+#include <asio/any_io_executor.hpp>
 #include <asio/awaitable.hpp>
+#include <asio/co_spawn.hpp>
+#include <asio/detached.hpp>
+#include <asio/error_code.hpp>
 #include <asio/ip/tcp.hpp>
+#include <asio/post.hpp>
+#include <asio/strand.hpp>
 
 namespace s2d::network
 {
 
-template <ANetworkSide NetworkSide>
-class Connection : public std::enable_shared_from_this<Connection<NetworkSide>>
+template <typename IncomingMessage, typename OutgoingMessage>
+class Connection : public std::enable_shared_from_this<Connection<IncomingMessage, OutgoingMessage>>
 {
 public:
-    using incoming_message_t = NetworkSide::incoming_message_t;
-    using outcoming_message_t = NetworkSide::outcoming_message_t;
-    using handler_t = NetworkSide::handler_t;
+    using incoming_message_t = IncomingMessage;
+    using outgoing_message_t = OutgoingMessage;
 
-    explicit Connection(
+    using message_handler_t = std::move_only_function<asio::awaitable<void>(connection_id, incoming_message_t)>;
+    using close_handler_t = std::move_only_function<void(connection_id)>;
+
+    struct Config
+    {
+        std::uint32_t maxMessageBytes{};
+        std::size_t maxQueuedMessages{1024};
+    };
+
+    static std::shared_ptr<Connection> create(
         connection_id id,
         asio::ip::tcp::socket&& socket,
-        handler_t& handler,
-        std::uint32_t max_message_bytes,
-        std::function<void(connection_id)> onClosed) noexcept;
+        Config config,
+        message_handler_t onMessage,
+        close_handler_t onClosed = {})
+    {
+        // Can not use std::make_shared, due to private constructor
+        return std::shared_ptr<Connection>{
+            new Connection{
+                id,
+                std::move(socket),
+                config,
+                std::move(onMessage),
+                std::move(onClosed)}};
+    }
 
-    void start();
-    void stop();
+    void start()
+    {
+        auto weak = this->weak_from_this();
 
-    void send(outcoming_message_t message);
+        asio::post(
+            m_strand,
+            [weak] {
+                if (auto self = weak.lock())
+                {
+                    self->startImpl();
+                }
+            });
+    }
+
+    void stop() noexcept
+    {
+        try
+        {
+            auto weak = this->weak_from_this();
+
+            asio::post(
+                m_strand,
+                [weak] {
+                    if (auto self = weak.lock())
+                    {
+                        self->stopImpl("local stop");
+                    }
+                });
+        }
+        catch (std::exception const& e)
+        {
+            LOG(warn, "Connection[id={}] stop failed: {}", m_id.id, e.what());
+        }
+    }
+
+    void send(outgoing_message_t message)
+    {
+        auto weak = this->weak_from_this();
+
+        asio::post(
+            m_strand,
+            [weak, message = std::move(message)]() mutable {
+                if (auto self = weak.lock())
+                {
+                    self->sendImpl(std::move(message));
+                }
+            });
+    }
 
     [[nodiscard]] connection_id getId() const noexcept
     {
@@ -42,154 +112,241 @@ public:
     }
 
 private:
-    asio::awaitable<void> run();
-    asio::awaitable<void> readLoop();
-
-    void closeAndReport() noexcept;
-    [[nodiscard]] std::string remoteEndpointString() const noexcept;
-
-private:
-    asio::ip::tcp::socket m_socket;
-    ConnectionWriter<NetworkSide> m_writer;
-    MessageChannel m_messageChannel;
-    std::function<void(connection_id)> m_onClosed;
-    connection_id m_id;
-    handler_t& m_handler;
-    std::atomic_bool m_stopped{false};
-    std::atomic_bool m_closeReported{false};
-};
-
-// ============================================================
-
-template <ANetworkSide NetworkSide>
-Connection<NetworkSide>::Connection(
-    connection_id id,
-    asio::ip::tcp::socket&& socket,
-    typename NetworkSide::handler_t& handler,
-    std::uint32_t max_message_bytes,
-    std::function<void(connection_id)> onClosed) noexcept
-    : m_socket{std::move(socket)}
-    , m_writer{m_socket, id, max_message_bytes, [this] { closeAndReport(); }}
-    , m_messageChannel{max_message_bytes}
-    , m_onClosed{std::move(onClosed)}
-    , m_id{id}
-    , m_handler{handler}
-{
-}
-
-template <ANetworkSide NetworkSide>
-void Connection<NetworkSide>::start()
-{
-    auto const remoteEndpoint = remoteEndpointString();
-    LOG(info, "Connection[id={}] started with {}", m_id.id, remoteEndpoint);
-
-    auto self = this->shared_from_this();
-    asio::co_spawn(
-        m_socket.get_executor(),
-        [self]() -> asio::awaitable<void> { co_await self->run(); },
-        asio::detached);
-}
-
-template <ANetworkSide NetworkSide>
-void Connection<NetworkSide>::stop()
-{
-    if (m_stopped.exchange(true))
+    Connection(
+        connection_id id,
+        asio::ip::tcp::socket&& socket,
+        Config config,
+        message_handler_t onMessage,
+        close_handler_t onClosed)
+        : m_socket{std::move(socket)}
+        , m_strand{m_socket.get_executor()}
+        , m_channel{config.maxMessageBytes}
+        , m_onMessage{std::move(onMessage)}
+        , m_onClosed{std::move(onClosed)}
+        , m_id{id}
+        , m_remoteEndpoint{makeRemoteEndpointString(m_socket)}
+        , m_maxQueuedMessages{config.maxQueuedMessages}
     {
-        LOG(warn, "Connection[id={}] already stopped", m_id.id);
-        return;
-    }
-
-    auto const remoteEndpoint = remoteEndpointString();
-
-    m_socket.shutdown(asio::ip::tcp::socket::shutdown_both);
-    m_socket.close();
-
-    LOG(info, "Connection[id={}] stopped with {}", m_id.id, remoteEndpoint);
-}
-
-template <ANetworkSide NetworkSide>
-void Connection<NetworkSide>::send(outcoming_message_t message)
-{
-    if (m_stopped.load() || !m_socket.is_open())
-    {
-        LOG(warn, "Connection[id={}] is stopped or socket is closed", m_id.id);
-        return;
-    }
-
-    m_writer.send(std::move(message), this->shared_from_this());
-}
-
-// --- private ---
-
-template <ANetworkSide NetworkSide>
-asio::awaitable<void> Connection<NetworkSide>::run()
-{
-    try
-    {
-        co_await readLoop();
-    }
-    catch (std::exception const& e)
-    {
-        if (!m_stopped.load())
+        if (!m_onMessage)
         {
-            LOG(warn, "Connection[id={}] error during read loop: {}", m_id.id, e.what());
+            throw std::invalid_argument{"Connection requires message handler"};
+        }
+
+        if (config.maxMessageBytes == 0)
+        {
+            throw std::invalid_argument{"Connection maxMessageBytes must be greater than zero"};
+        }
+
+        if (config.maxQueuedMessages == 0)
+        {
+            throw std::invalid_argument{"Connection maxQueuedMessages must be greater than zero"};
         }
     }
 
-    closeAndReport();
-    co_return;
-}
-
-template <ANetworkSide NetworkSide>
-asio::awaitable<void> Connection<NetworkSide>::readLoop()
-{
-    for (;;)
+    void startImpl()
     {
-        auto message = co_await m_messageChannel.readMessage<incoming_message_t>(m_socket);
-        LOG(debug, "Received from connection[{}] message with request_id {}", m_id.id, message.request_id()); // TODO: improve logging
-        auto response = co_await m_handler.onMessage(m_id, message);
-        response.set_request_id(message.request_id());
-        send(std::move(response));
+        if (m_started)
+        {
+            LOG(warn, "Connection[id={}] already started", m_id.id);
+            return;
+        }
+
+        if (m_closed)
+        {
+            LOG(warn, "Connection[id={}] cannot start closed connection", m_id.id);
+            return;
+        }
+
+        m_started = true;
+
+        LOG(info, "Connection[id={}] started with {}", m_id.id, m_remoteEndpoint);
+
+        auto self = this->shared_from_this();
+
+        asio::co_spawn(
+            m_strand,
+            [self]() -> asio::awaitable<void> {
+                co_await self->readLoop();
+            },
+            asio::detached);
     }
-}
 
-template <ANetworkSide NetworkSide>
-void Connection<NetworkSide>::closeAndReport() noexcept
-{
-    if (m_closeReported.exchange(true))
+    void sendImpl(outgoing_message_t message)
     {
-        return;
+        if (m_closed)
+        {
+            LOG(warn, "Connection[id={}] is closed, outgoing message ignored", m_id.id);
+            return;
+        }
+
+        if (m_writeQueue.size() >= m_maxQueuedMessages)
+        {
+            LOG(warn, "Connection[id={}] write queue limit exceeded", m_id.id);
+            stopImpl("write queue limit exceeded");
+            return;
+        }
+
+        m_writeQueue.push_back(std::move(message));
+
+        if (m_writing)
+        {
+            return;
+        }
+
+        m_writing = true;
+
+        auto self = this->shared_from_this();
+
+        asio::co_spawn(
+            m_strand,
+            [self]() -> asio::awaitable<void> {
+                co_await self->writeLoop();
+            },
+            asio::detached);
     }
 
-    stop();
-
-    m_handler.onDisconnect(m_id);
-
-    if (m_onClosed)
+    asio::awaitable<void> readLoop()
     {
+        while (!m_closed)
+        {
+            try
+            {
+                auto message = co_await m_channel.readMessage<incoming_message_t>(m_socket);
+
+                if (m_closed)
+                {
+                    co_return;
+                }
+
+                LOG(debug, "Received message from connection[id={}]", m_id.id);
+
+                try
+                {
+                    co_await m_onMessage(m_id, std::move(message));
+                }
+                catch (std::exception const& e)
+                {
+                    LOG(err, "Connection[id={}] message handler failed: {}", m_id.id, e.what());
+                    stopImpl("message handler failed");
+                    co_return;
+                }
+            }
+            catch (std::exception const& e)
+            {
+                if (!m_closed)
+                {
+                    LOG(warn, "Connection[id={}] read failed: {}", m_id.id, e.what());
+                }
+
+                stopImpl("read failed");
+                co_return;
+            }
+        }
+    }
+
+    asio::awaitable<void> writeLoop()
+    {
+        while (!m_closed && !m_writeQueue.empty())
+        {
+            auto message = std::move(m_writeQueue.front());
+            m_writeQueue.pop_front();
+
+            try
+            {
+                LOG(debug, "Sending message to connection[id={}]", m_id.id);
+                co_await m_channel.writeMessage(m_socket, std::move(message));
+            }
+            catch (std::exception const& e)
+            {
+                if (!m_closed)
+                {
+                    LOG(warn, "Connection[id={}] write failed: {}", m_id.id, e.what());
+                }
+
+                m_writing = false;
+                stopImpl("write failed");
+                co_return;
+            }
+        }
+
+        m_writing = false;
+    }
+
+    void stopImpl(std::string_view reason)
+    {
+        if (m_closed)
+        {
+            return;
+        }
+
+        m_closed = true;
+
+        m_writeQueue.clear();
+        m_writing = false;
+
+        asio::error_code ignored;
+        m_socket.cancel(ignored);
+        m_socket.shutdown(asio::ip::tcp::socket::shutdown_both, ignored);
+        m_socket.close(ignored);
+
+        LOG(info, "Connection[id={}] stopped with {}: {}", m_id.id, m_remoteEndpoint, reason);
+
+        notifyClosed();
+    }
+
+    void notifyClosed()
+    {
+        if (!m_onClosed)
+        {
+            return;
+        }
+
         try
         {
             m_onClosed(m_id);
         }
         catch (std::exception const& e)
         {
-            LOG(err, "Connection[id={}] cleanup callback failed: {}", m_id.id, e.what());
+            LOG(err, "Connection[id={}] close handler failed: {}", m_id.id, e.what());
         }
     }
-}
 
-template <ANetworkSide NetworkSide>
-std::string Connection<NetworkSide>::remoteEndpointString() const noexcept
-{
-    try
+    static std::string makeRemoteEndpointString(asio::ip::tcp::socket const& socket)
     {
-        auto const endpoint = m_socket.remote_endpoint();
-        return fmt::format("{}:{}", endpoint.address().to_string(), endpoint.port());
+        asio::error_code ec;
+
+        auto const endpoint = socket.remote_endpoint(ec);
+        if (ec)
+        {
+            return "<unknown>";
+        }
+
+        auto const address = endpoint.address().to_string(ec);
+        if (ec)
+        {
+            return "<unknown>";
+        }
+
+        return address + ":" + std::to_string(endpoint.port());
     }
-    catch (...)
-    {
-        return "<unknown>";
-    }
-}
+
+private:
+    asio::ip::tcp::socket m_socket;
+    asio::strand<asio::any_io_executor> m_strand;
+    MessageChannel m_channel;
+
+    message_handler_t m_onMessage;
+    close_handler_t m_onClosed;
+
+    connection_id m_id;
+    std::string m_remoteEndpoint;
+
+    std::deque<outgoing_message_t> m_writeQueue;
+    std::size_t m_maxQueuedMessages;
+
+    bool m_started{false};
+    bool m_closed{false};
+    bool m_writing{false};
+};
 
 } // namespace s2d::network

@@ -12,6 +12,16 @@
 
 using asio::ip::tcp;
 
+namespace
+{
+
+asio::awaitable<void> startServer(s2d::network::TcpServer& server)
+{
+    co_await server.start();
+}
+
+} // namespace
+
 int main()
 {
     try
@@ -22,7 +32,7 @@ int main()
         s2d::network::ServerMessageHandler handler{worldService};
         s2d::network::TcpServer server{io, cfg, handler};
 
-        asio::co_spawn(io, [&server]() -> asio::awaitable<void> { co_await server.start(); }, asio::detached);
+        asio::co_spawn(io, startServer(server), asio::detached);
 
         io.run();
     }

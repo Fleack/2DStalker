@@ -17,11 +17,14 @@ function(s2d_add_test target_name)
     )
 
     add_executable(${target_name}
-            ${ARG_SOURCES}
-    )
+            ${ARG_SOURCES})
+
+    target_include_directories(${target_name} PRIVATE
+            ${PROJECT_SOURCE_DIR})
 
     target_link_libraries(${target_name} PRIVATE
             Catch2::Catch2WithMain
+            SharedLogger
             ${ARG_LIBS}
     )
 

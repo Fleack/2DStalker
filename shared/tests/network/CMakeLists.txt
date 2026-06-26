@@ -6,8 +6,7 @@ s2d_add_test(
         SharedNetwork
         SharedProtocol)
 
-s2d_add_test(
-        message-channel-test
+s2d_add_test(message-channel-test
         SOURCES
         MessageChannelTest.cpp
         LIBS

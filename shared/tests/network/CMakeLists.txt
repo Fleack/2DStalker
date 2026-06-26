@@ -1,7 +1,6 @@
-s2d_add_test(
-        connection-writer-test
+s2d_add_test(connection-send-queue-test
         SOURCES
-        ConnectionWriterTest.cpp
+        ConnectionSendQueueTest.cpp
         LIBS
         SharedNetwork
         SharedProtocol)

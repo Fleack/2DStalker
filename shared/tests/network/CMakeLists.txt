@@ -12,3 +12,10 @@ s2d_add_test(message-channel-test
         LIBS
         SharedNetwork
         SharedProtocol)
+
+s2d_add_test(connection-test
+        SOURCES
+        ConnectionTest.cpp
+        LIBS
+        SharedNetwork
+        SharedProtocol)

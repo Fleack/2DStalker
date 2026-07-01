@@ -144,6 +144,4 @@ CMakeUserPresets.json
 
 cmale-build-*/
 
-.agents
-
 # End of https://www.toptal.com/developers/gitignore/api/c++,cmake,clion+all

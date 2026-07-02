@@ -20,4 +20,7 @@ target_link_libraries(Client PRIVATE
         sfml-system
         json_headers
 )
+
+copy_runtime_dlls(Client)
+
 enable_gcc_flags(Client)

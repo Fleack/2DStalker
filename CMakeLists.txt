@@ -5,6 +5,8 @@ set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+set(BUILD_SHARED_LIBS ON CACHE BOOL "" FORCE)
+
 option(BUILD_TESTS "Build test executables" OFF)
 
 function(enable_gcc_flags target)
@@ -57,6 +59,17 @@ function(enable_gcc_flags target)
             # Release config
             $<$<CONFIG:Release>:-O2>
     )
+endfunction()
+
+function(copy_runtime_dlls target)
+    if (WIN32)
+        add_custom_command(TARGET ${target} POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                $<TARGET_RUNTIME_DLLS:${target}>
+                $<TARGET_FILE_DIR:${target}>
+                COMMAND_EXPAND_LISTS
+        )
+    endif ()
 endfunction()
 
 include(FetchContent)
@@ -115,7 +128,7 @@ target_compile_definitions(asio_headers INTERFACE
 
 if (WIN32)
     target_compile_definitions(asio_headers INTERFACE
-            _WIN32_WINNT=0x0601
+            _WIN32_WINNT=0x0A00
     )
 endif ()
 

@@ -34,13 +34,15 @@ add_executable(Client
 
 add_subdirectory(network)
 
-target_link_libraries(Client PRIVATE
+target_link_libraries(Client
+        PRIVATE
         ClientNetwork
         SharedLogger
-        SharedProtocol
         TGUI::TGUI
         SFML::Graphics
         json_headers
+        PUBLIC
+        SharedProtocol
 )
 
 copy_runtime_dlls(Client)

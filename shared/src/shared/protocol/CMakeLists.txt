@@ -1,10 +1,14 @@
 find_package(Protobuf CONFIG REQUIRED)
 
-add_library(SharedProtocol STATIC)
+add_library(SharedProtocol SHARED)
 
 target_sources(SharedProtocol
         PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/message.proto
+)
+
+set(SHARED_PROTOCOL_GENERATED_DIR
+        ${CMAKE_CURRENT_BINARY_DIR}/generated
 )
 
 protobuf_generate(
@@ -12,7 +16,7 @@ protobuf_generate(
         LANGUAGE cpp
         PROTOS ${CMAKE_CURRENT_SOURCE_DIR}/message.proto
         IMPORT_DIRS ${CMAKE_SOURCE_DIR}/shared/src
-        PROTOC_OUT_DIR ${CMAKE_CURRENT_BINARY_DIR}/generated
+        PROTOC_OUT_DIR ${SHARED_PROTOCOL_GENERATED_DIR}
 )
 
 target_link_libraries(SharedProtocol
@@ -22,7 +26,10 @@ target_link_libraries(SharedProtocol
 
 target_include_directories(SharedProtocol
         PUBLIC
-        ${CMAKE_CURRENT_BINARY_DIR}/generated
+        ${SHARED_PROTOCOL_GENERATED_DIR}
+        ${PROJECT_SOURCE_DIR}/shared/src
 )
 
-target_include_directories(SharedProtocol INTERFACE ${PROJECT_SOURCE_DIR}/shared/src)
+set_target_properties(SharedProtocol PROPERTIES
+        WINDOWS_EXPORT_ALL_SYMBOLS ON
+)

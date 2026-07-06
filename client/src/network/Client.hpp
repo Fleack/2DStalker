@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ClientRequestManager.hpp"
 #include "shared/network/Connection.hpp"
 #include "shared/protocol/message.pb.h"
 
@@ -98,7 +99,6 @@ private:
     Config m_config;
 
     std::shared_ptr<connection_t> m_connection;
-    std::shared_ptr<asio::ip::tcp::socket> m_connectSocket;
 
     std::unordered_map<std::uint64_t, std::unique_ptr<PendingRequest>> m_pendingRequests;
 

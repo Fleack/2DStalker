@@ -84,8 +84,6 @@ TextStalker / Stalker2D - клиент-серверная 2D-игра с упо�
 - `server` - игровая логика, состояние мира, обработка действий и сетевые подключения;
 - `shared` - общий протокол, сетевые примитивы, утилиты и код, который действительно нужен обеим сторонам.
 
-Не советуй переносить код в `shared` "на всякий случай". Общий код должен быть реально общим.
-
 При обсуждении сетевого протокола учитывай обе стороны: клиент, сервер, тесты и документацию в `docs/protocol.md`.
 
 Предпочитай простую архитектуру:
@@ -144,19 +142,37 @@ TextStalker / Stalker2D - клиент-серверная 2D-игра с упо�
 Конфигурация Debug-сборки с тестами:
 
 ```powershell
-cmake -S . -B build/Debug -G Ninja -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=ON -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++
+cmake -S . -B out/Debug -G Ninja -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=ON -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++
 ```
 
-Сборка:
+Сборка Debug:
 
 ```powershell
-cmake --build build/Debug
+cmake --build out/Debug -j12
 ```
 
-Тесты:
+Тесты Debug:
 
 ```powershell
-ctest --test-dir build/Debug --output-on-failure
+ctest --test-dir out/Debug --output-on-failure
+```
+
+Конфигурация Release-сборки с тестами:
+
+```powershell
+cmake -S . -B out/Release -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++
+```
+
+Сборка Release:
+
+```powershell
+cmake --build out/Release -j12
+```
+
+Тесты Release:
+
+```powershell
+ctest --test-dir out/Release --output-on-failure
 ```
 
 Проверка форматирования для измененных C++-файлов:

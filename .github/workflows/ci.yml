@@ -62,8 +62,8 @@ jobs:
 
       - name: Check protobuf schema
         run: |
-          mkdir -p build/proto-check/shared/protocol
-          protoc --proto_path=shared/src --cpp_out=build/proto-check shared/src/shared/protocol/message.proto
+          mkdir -p out/proto-check/shared/protocol
+          protoc --proto_path=shared/src --cpp_out=out/proto-check shared/src/shared/protocol/message.proto
 
   build:
     name: build ${{ matrix.build_type }}
@@ -119,7 +119,7 @@ jobs:
         run: |
           fetchcontent_dir="$(pwd)/.cache/fetchcontent/${{ matrix.build_type }}"
           mkdir -p "$fetchcontent_dir"
-          cmake -S . -B build/${{ matrix.build_type }} -G Ninja \
+          cmake -S . -B out/${{ matrix.build_type }} -G Ninja \
             -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
             -DBUILD_TESTS=ON \
             -DCMAKE_C_COMPILER=gcc \

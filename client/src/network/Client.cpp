@@ -40,22 +40,9 @@ Client::Client(asio::io_context& ctx, Config config)
 
 Client::~Client()
 {
-    try
+    if (m_connection)
     {
-        if (m_connectSocket)
-        {
-            asio::error_code ignored;
-            m_connectSocket->cancel(ignored);
-            m_connectSocket->close(ignored);
-        }
-
-        if (m_connection)
-        {
-            m_connection->stop();
-        }
-    }
-    catch (...)
-    {
+        m_connection->stop();
     }
 }
 
@@ -118,7 +105,6 @@ asio::awaitable<void> Client::connectImpl(asio::ip::address ip, std::uint16_t po
     auto socket = std::make_shared<asio::ip::tcp::socket>(m_strand);
 
     m_connecting = true;
-    m_connectSocket = socket;
 
     asio::error_code ec;
     co_await socket->async_connect(
@@ -126,7 +112,6 @@ asio::awaitable<void> Client::connectImpl(asio::ip::address ip, std::uint16_t po
         asio::redirect_error(asio::use_awaitable, ec));
 
     m_connecting = false;
-    m_connectSocket.reset();
 
     if (ec)
     {
@@ -249,14 +234,6 @@ void Client::disconnectImpl(std::string_view reason) noexcept
     {
         LOG(warn, "Client is already disconnected");
         return;
-    }
-
-    if (m_connectSocket)
-    {
-        asio::error_code ignored;
-        m_connectSocket->cancel(ignored);
-        m_connectSocket->close(ignored);
-        m_connectSocket.reset();
     }
 
     failPendingRequests(reason);

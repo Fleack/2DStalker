@@ -9,8 +9,8 @@
 #include <utility>
 #include <vector>
 
-#include <asio/awaitable.hpp>
-#include <asio/post.hpp>
+#include <boost/asio/awaitable.hpp>
+#include <boost/asio/post.hpp>
 #include <catch2/catch_test_macros.hpp>
 
 namespace
@@ -20,6 +20,7 @@ using connection_t = s2d::network::Connection<
     s2d::protocol::ServerMessage>;
 } // namespace
 
+using namespace boost;
 using s2d::test::network::make_pong_response;
 using s2d::test::network::max_message_bytes;
 using s2d::test::network::read_message;

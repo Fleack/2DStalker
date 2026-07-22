@@ -7,18 +7,20 @@
 #include <cstdint>
 #include <utility>
 
-#include <asio/awaitable.hpp>
-#include <asio/ip/tcp.hpp>
-#include <asio/steady_timer.hpp>
-#include <asio/use_awaitable.hpp>
+#include <boost/asio/awaitable.hpp>
+#include <boost/asio/ip/tcp.hpp>
+#include <boost/asio/steady_timer.hpp>
+#include <boost/asio/use_awaitable.hpp>
 #include <catch2/catch_test_macros.hpp>
 
 namespace s2d::test::network
 {
 
+using namespace boost;
+
 inline void close_socket(asio::ip::tcp::socket& socket) noexcept
 {
-    asio::error_code ignored;
+    system::error_code ignored;
     socket.close(ignored);
 }
 
@@ -49,7 +51,7 @@ inline asio::awaitable<std::size_t> available_bytes_after_wait(
     timer.expires_after(wait_for);
     co_await timer.async_wait(asio::use_awaitable);
 
-    asio::error_code ec;
+    system::error_code ec;
     auto const available_bytes = socket.available(ec);
     REQUIRE_FALSE(ec);
 

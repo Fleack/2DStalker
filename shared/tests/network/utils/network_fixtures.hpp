@@ -4,14 +4,15 @@
 #include <future>
 #include <utility>
 
-#include <asio/co_spawn.hpp>
-#include <asio/io_context.hpp>
-#include <asio/ip/address_v4.hpp>
-#include <asio/ip/tcp.hpp>
-#include <asio/use_future.hpp>
+#include <boost/asio/co_spawn.hpp>
+#include <boost/asio/io_context.hpp>
+#include <boost/asio/ip/address_v4.hpp>
+#include <boost/asio/ip/tcp.hpp>
+#include <boost/asio/use_future.hpp>
 
 namespace s2d::test::network
 {
+using namespace boost;
 
 struct io_fixture
 {

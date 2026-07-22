@@ -88,11 +88,13 @@ FetchContent_Declare(
         GIT_TAG v1.17.0
 )
 
-# Boost Asio
+# Boost.Asio from Boost 1.92.0 beta 1
 FetchContent_Declare(
-        asio
-        GIT_REPOSITORY https://github.com/chriskohlhoff/asio.git
-        GIT_TAG asio-1-38-2
+        Boost
+        URL https://archives.boost.io/beta/1.92.0.beta1/source/boost_1_92_0_b1.tar.gz
+        URL_HASH SHA256=585e0a028cc3f1f7711842b7cbfbb5faece2f243ef57ffe7fb846e9b61e2faa5
+        SYSTEM
+        EXCLUDE_FROM_ALL
 )
 
 # Fmt
@@ -102,7 +104,14 @@ FetchContent_Declare(
         GIT_TAG 12.1.0
 )
 
-FetchContent_MakeAvailable(json spdlog asio fmt)
+FetchContent_MakeAvailable(json spdlog Boost fmt)
+
+add_library(boost_asio_headers INTERFACE)
+add_library(Boost::asio ALIAS boost_asio_headers)
+
+target_include_directories(boost_asio_headers SYSTEM INTERFACE
+        ${boost_SOURCE_DIR}
+)
 
 if (BUILD_TESTS)
     include(EnableTesting.cmake)
@@ -114,23 +123,6 @@ add_library(json_headers INTERFACE)
 target_include_directories(json_headers SYSTEM INTERFACE
         ${json_SOURCE_DIR}/include
 )
-
-# ====== Asio headers ======
-add_library(asio_headers INTERFACE)
-
-target_include_directories(asio_headers SYSTEM INTERFACE
-        ${asio_SOURCE_DIR}/asio/include
-)
-
-target_compile_definitions(asio_headers INTERFACE
-        ASIO_STANDALONE
-)
-
-if (WIN32)
-    target_compile_definitions(asio_headers INTERFACE
-            _WIN32_WINNT=0x0A00
-    )
-endif ()
 
 # ====== Shared ======
 add_subdirectory(shared)

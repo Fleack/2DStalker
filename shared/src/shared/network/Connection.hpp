@@ -12,17 +12,18 @@
 #include <string>
 #include <utility>
 
-#include <asio/any_io_executor.hpp>
-#include <asio/awaitable.hpp>
-#include <asio/co_spawn.hpp>
-#include <asio/detached.hpp>
-#include <asio/error_code.hpp>
-#include <asio/ip/tcp.hpp>
-#include <asio/post.hpp>
-#include <asio/strand.hpp>
+#include <boost/asio/any_io_executor.hpp>
+#include <boost/asio/awaitable.hpp>
+#include <boost/asio/co_spawn.hpp>
+#include <boost/asio/detached.hpp>
+#include <boost/asio/error.hpp>
+#include <boost/asio/ip/tcp.hpp>
+#include <boost/asio/post.hpp>
+#include <boost/asio/strand.hpp>
 
 namespace s2d::network
 {
+using namespace boost;
 
 template <typename IncomingMessage, typename OutgoingMessage>
 class Connection : public std::enable_shared_from_this<Connection<IncomingMessage, OutgoingMessage>>
@@ -284,7 +285,7 @@ private:
         m_writeQueue.clear();
         m_writing = false;
 
-        asio::error_code ignored;
+        system::error_code ignored;
         m_socket.cancel(ignored);
         m_socket.shutdown(asio::ip::tcp::socket::shutdown_both, ignored);
         m_socket.close(ignored);
@@ -313,7 +314,7 @@ private:
 
     static std::string makeRemoteEndpointString(asio::ip::tcp::socket const& socket)
     {
-        asio::error_code ec;
+        system::error_code ec;
 
         auto const endpoint = socket.remote_endpoint(ec);
         if (ec)
@@ -321,7 +322,7 @@ private:
             return "<unknown>";
         }
 
-        auto const address = endpoint.address().to_string(ec);
+        auto const address = endpoint.address().to_string();
         if (ec)
         {
             return "<unknown>";

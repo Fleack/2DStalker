@@ -9,13 +9,12 @@
 #include <stdexcept>
 #include <system_error>
 
-#include <asio/awaitable.hpp>
-#include <asio/ip/tcp.hpp>
+#include <boost/asio/awaitable.hpp>
+#include <boost/asio/ip/tcp.hpp>
 #include <catch2/catch_test_macros.hpp>
 
-using s2d::test::require_messages_equal;
-using s2d::test::require_ready;
-using s2d::test::network::available_bytes_after_wait;
+using namespace boost;
+
 using s2d::test::network::close_socket;
 using s2d::test::network::make_ping_request;
 using s2d::test::network::make_pong_response;

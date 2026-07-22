@@ -5,17 +5,18 @@
 #include "shared/logger/logger.hpp"
 #include "shared/network/Connection.hpp"
 
-#include <asio.hpp>
 #include <cstdint>
 
+#include <boost/asio.hpp>
 #include <spdlog/spdlog.h>
 
-using asio::ip::tcp;
+using namespace boost;
+using namespace boost::asio::ip;
 
 namespace
 {
 
-asio::awaitable<void> startServer(s2d::network::TcpServer& server)
+boost::asio::awaitable<void> startServer(s2d::network::TcpServer& server)
 {
     co_await server.start();
 }
@@ -26,13 +27,13 @@ int main()
 {
     try
     {
-        asio::io_context io;
+        boost::asio::io_context io;
         s2d::network::tcp_server_config cfg;
         s2d::game::WorldService worldService;
         s2d::network::ServerMessageHandler handler{worldService};
         s2d::network::TcpServer server{io, cfg, handler};
 
-        asio::co_spawn(io, startServer(server), asio::detached);
+        boost::asio::co_spawn(io, startServer(server), boost::asio::detached);
 
         io.run();
     }

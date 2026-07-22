@@ -10,7 +10,7 @@
 #include <stdexcept>
 #include <utility>
 
-#include <asio/awaitable.hpp>
+#include <boost/asio/awaitable.hpp>
 #include <catch2/catch_test_macros.hpp>
 
 namespace
@@ -20,6 +20,7 @@ using connection_t = s2d::network::Connection<
     s2d::protocol::ServerMessage>;
 } // namespace
 
+using namespace boost;
 using s2d::test::require_messages_equal;
 using s2d::test::network::available_bytes_after_wait;
 using s2d::test::network::close_socket;

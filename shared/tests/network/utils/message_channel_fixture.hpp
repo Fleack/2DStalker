@@ -6,7 +6,7 @@
 
 #include <utility>
 
-#include <asio/awaitable.hpp>
+#include <boost/asio/awaitable.hpp>
 #include <catch2/catch_test_macros.hpp>
 
 namespace s2d::test::network

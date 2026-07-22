@@ -7,14 +7,16 @@
 #include <stdexcept>
 #include <vector>
 
-#include <asio/awaitable.hpp>
-#include <asio/ip/tcp.hpp>
-#include <asio/use_awaitable.hpp>
-#include <asio/write.hpp>
+#include <boost/asio/awaitable.hpp>
+#include <boost/asio/ip/tcp.hpp>
+#include <boost/asio/use_awaitable.hpp>
+#include <boost/asio/write.hpp>
 #include <catch2/catch_test_macros.hpp>
 
 namespace
 {
+using namespace boost;
+
 asio::awaitable<void> write_raw_frame(
     asio::ip::tcp::socket& socket,
     s2d::network::MessageFrameCodec::LengthPrefix prefix,

@@ -92,7 +92,7 @@ FetchContent_Declare(
 FetchContent_Declare(
         asio
         GIT_REPOSITORY https://github.com/chriskohlhoff/asio.git
-        GIT_TAG asio-1-30-2
+        GIT_TAG asio-1-38-2
 )
 
 # Fmt

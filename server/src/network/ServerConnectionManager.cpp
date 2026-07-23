@@ -27,11 +27,11 @@ std::shared_ptr<server_connection_t> ServerConnectionManager::create(asio::ip::t
         connectionId,
         std::move(socket),
         server_connection_t::Config{.maxMessageBytes = max_message_bytes},
-        [this, &handler](connection_id id, protocol::ClientMessage message) {
-            return handleMessage(handler, id, std::move(message));
+        [this, &handler, connectionId](protocol::ClientMessage message) {
+            return handleMessage(handler, connectionId, std::move(message));
         },
-        [this, &handler](connection_id id) {
-            handleDisconnect(handler, id);
+        [this, &handler, connectionId]() {
+            handleDisconnect(handler, connectionId);
         });
     m_connections.emplace(connectionId, connection);
 

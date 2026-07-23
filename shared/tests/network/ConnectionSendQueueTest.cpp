@@ -36,7 +36,7 @@ TEST_CASE_METHOD(
         s2d::network::connection_id{1},
         std::move(sockets.server),
         connection_t::Config{.maxMessageBytes = max_message_bytes},
-        [](s2d::network::connection_id, s2d::protocol::ClientMessage) -> asio::awaitable<void> {
+        [](s2d::protocol::ClientMessage) -> asio::awaitable<void> {
             co_return;
         });
 

@@ -32,8 +32,8 @@ public:
     using incoming_message_t = IncomingMessage;
     using outgoing_message_t = OutgoingMessage;
 
-    using message_handler_t = std::move_only_function<asio::awaitable<void>(connection_id, incoming_message_t)>;
-    using close_handler_t = std::move_only_function<void(connection_id)>;
+    using message_handler_t = std::move_only_function<asio::awaitable<void>(incoming_message_t)>;
+    using close_handler_t = std::move_only_function<void()>;
 
     struct Config
     {
@@ -223,7 +223,7 @@ private:
 
                 try
                 {
-                    co_await m_onMessage(m_id, std::move(message));
+                    co_await m_onMessage(std::move(message));
                 }
                 catch (std::exception const& e)
                 {
@@ -304,7 +304,7 @@ private:
 
         try
         {
-            m_onClosed(m_id);
+            m_onClosed();
         }
         catch (std::exception const& e)
         {

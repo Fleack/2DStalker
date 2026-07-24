@@ -1,5 +1,6 @@
 add_library(ClientNetwork
         Client.cpp
+        ClientRequestManager.cpp
         ConnectionManager.cpp
 )
 

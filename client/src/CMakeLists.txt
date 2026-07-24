@@ -41,8 +41,6 @@ target_link_libraries(Client
         TGUI::TGUI
         SFML::Graphics
         json_headers
-        PUBLIC
-        SharedProtocol
 )
 
 copy_runtime_dlls(Client)

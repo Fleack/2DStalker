@@ -3,9 +3,7 @@ s2d_add_test(
         SOURCES
         ClientTest.cpp
         LIBS
-        ClientNetwork
-        SharedNetwork
-        SharedProtocol)
+        ClientNetwork)
 
 s2d_add_test(
         client-connection-manager-test
@@ -14,3 +12,9 @@ s2d_add_test(
         LIBS
         ClientNetwork)
 
+s2d_add_test(
+        client-request-manager-test
+        SOURCES
+        ClientRequestManagerTest.cpp
+        LIBS
+        ClientNetwork)

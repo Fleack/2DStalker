@@ -1,15 +1,18 @@
 #include "network/Client.hpp"
 #include "shared/logger/logger.hpp"
-#include "shared/protocol/message.pb.h"
 
 #include <chrono>
 #include <cstdint>
 #include <ctime>
 #include <deque>
+#include <exception>
+#include <functional>
 #include <iomanip>
+#include <mutex>
 #include <optional>
 #include <sstream>
 #include <string>
+#include <system_error>
 #include <thread>
 #include <utility>
 
@@ -56,11 +59,7 @@ std::string currentTime()
 
     std::tm tm{};
 
-#ifdef _WIN32
     localtime_s(&tm, &time);
-#else
-    localtime_r(&time, &tm);
-#endif
 
     std::ostringstream out;
     out << std::put_time(&tm, "%H:%M:%S");
@@ -139,7 +138,30 @@ tgui::Button::Ptr makeButton(
 
     return button;
 }
+
+std::string exceptionMessage(std::exception_ptr error)
+{
+    if (!error)
+    {
+        return {};
+    }
+
+    try
+    {
+        std::rethrow_exception(error);
+    }
+    catch (std::exception const& exception)
+    {
+        return exception.what();
+    }
+    catch (...)
+    {
+        return "Unknown client error";
+    }
+}
 } // namespace
+
+using namespace boost;
 
 int main()
 {
@@ -151,7 +173,15 @@ int main()
         net_context.run();
     });
 
-    auto client = Client::create(net_context);
+    auto client = network::Client::create(net_context);
+
+    std::mutex uiTasksMutex;
+    std::deque<std::move_only_function<void()>> uiTasks;
+
+    auto postUi = [&](std::move_only_function<void()> task) {
+        std::scoped_lock lock{uiTasksMutex};
+        uiTasks.push_back(std::move(task));
+    };
 
     sf::RenderWindow window(
         sf::VideoMode({1000u, 680u}),
@@ -302,136 +332,129 @@ int main()
 
     addLog("Ready");
 
-    connectButton->onPress([&] {
-        if (client->isConnected())
-        {
-            LOG(warn, "Client is already connected");
-            addLog("Client is already connected");
-            return;
-        }
+    auto shownState = network::ConnectionState::Disconnected;
+    auto showConnectionState = [&](network::ConnectionState state) {
+        shownState = state;
 
-        try
-        {
-            auto const ip = asio::ip::make_address("127.0.0.1");
-            constexpr uint16_t port = 1234;
+        auto const connected = state == network::ConnectionState::Connected;
+        connectButton->setEnabled(state == network::ConnectionState::Disconnected);
+        disconnectButton->setEnabled(
+            state == network::ConnectionState::Connecting || connected);
+        pingButton->setEnabled(connected);
+        snapshotButton->setEnabled(connected);
 
+        switch (state)
+        {
+        case network::ConnectionState::Disconnected:
+            setStatus("Disconnected", ui::err);
+            break;
+        case network::ConnectionState::Connecting:
             setStatus("Connecting...", ui::warn);
-            addLog("Connecting to 127.0.0.1:1234");
-
-            co_spawn(
-                net_context,
-                client->connect(ip, port),
-                asio::use_future)
-                .get();
-
+            break;
+        case network::ConnectionState::Connected:
             setStatus("Connected", ui::ok);
-            addLog("Connected to 127.0.0.1:1234");
+            break;
+        case network::ConnectionState::Disconnecting:
+            setStatus("Disconnecting...", ui::warn);
+            break;
         }
-        catch (std::exception const& ex)
-        {
-            setStatus("Connection failed", ui::err);
+    };
 
-            std::string message = "Failed to connect: ";
-            message += ex.what();
+    showConnectionState(shownState);
 
-            addLog(message);
-            LOG(err, "Failed to connect: {}", ex.what());
-        }
+    connectButton->onPress([&] {
+        connectButton->setEnabled(false);
+
+        auto const ip = asio::ip::make_address("127.0.0.1");
+        constexpr std::uint16_t port = 1234;
+
+        addLog("Connecting to 127.0.0.1:1234");
+
+        asio::co_spawn(
+            net_context,
+            client->connect(ip, port),
+            [&](std::exception_ptr error) {
+                postUi([&, message = exceptionMessage(error)] {
+                    showConnectionState(client->state());
+
+                    if (message.empty())
+                    {
+                        addLog("Connected");
+                        return;
+                    }
+
+                    addLog("Connect failed: " + message);
+                    LOG(err, "Client connect failed: {}", message);
+                });
+            });
     });
 
     disconnectButton->onPress([&] {
-        try
-        {
-            if (!client->isConnected())
-            {
-                addLog("Client is already disconnected");
-                return;
-            }
+        disconnectButton->setEnabled(false);
+        addLog("Disconnect requested");
 
-            client->disconnect();
+        asio::co_spawn(
+            net_context,
+            client->disconnect(),
+            [&](std::exception_ptr error) {
+                postUi([&, message = exceptionMessage(error)] {
+                    showConnectionState(client->state());
 
-            setStatus("Disconnected", ui::err);
-            addLog("Disconnected");
-        }
-        catch (std::exception const& ex)
-        {
-            std::string message = "Failed to disconnect: ";
-            message += ex.what();
+                    if (message.empty())
+                    {
+                        addLog("Disconnected");
+                        return;
+                    }
 
-            addLog(message);
-            LOG(err, "Failed to disconnect: {}", ex.what());
-        }
+                    addLog("Disconnect failed: " + message);
+                    LOG(err, "Client disconnect failed: {}", message);
+                });
+            });
     });
 
     snapshotButton->onPress([&] {
-        try
-        {
-            s2d::protocol::ClientMessage message;
-            message.mutable_state_snapshot();
+        addLog("Sending state snapshot");
 
-            addLog("Sending state snapshot");
+        asio::co_spawn(
+            net_context,
+            client->sendRequest(s2d::protocol::StateSnapshotRequest{}),
+            [&](std::exception_ptr error, s2d::protocol::StateSnapshotResponse response) {
+                postUi([&, message = exceptionMessage(error), response = std::move(response)] {
+                    if (message.empty())
+                    {
+                        addLog("State snapshot: " + response.state_json());
+                        return;
+                    }
 
-            auto response = co_spawn(
-                                net_context,
-                                client->send(message),
-                                asio::use_future)
-                                .get();
-
-            addLog("State snapshot response received");
-            LOG(info, "Response from server: {}", response.SerializeAsString());
-        }
-        catch (std::exception const& ex)
-        {
-            std::string message = "Failed to send state snapshot: ";
-            message += ex.what();
-
-            addLog(message);
-            LOG(err, "Failed to send state snapshot: {}", ex.what());
-        }
+                    addLog("State snapshot failed: " + message);
+                    LOG(err, "State snapshot failed: {}", message);
+                });
+            });
     });
 
     pingButton->onPress([&] {
-        try
-        {
-            s2d::protocol::ClientMessage message;
+        s2d::protocol::PingRequest request;
+        request.set_timestamp(static_cast<std::uint64_t>(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count()));
+        addLog("Sending ping");
 
-            auto const nowMs =
-                std::chrono::duration_cast<std::chrono::milliseconds>(
-                    std::chrono::system_clock::now().time_since_epoch())
-                    .count();
+        asio::co_spawn(
+            net_context,
+            client->sendRequest(std::move(request)),
+            [&](std::exception_ptr error, s2d::protocol::PongResponse response) {
+                postUi([&, message = exceptionMessage(error), response = std::move(response)] {
+                    if (message.empty())
+                    {
+                        addLog("Pong: " + std::to_string(response.timestamp()));
+                        return;
+                    }
 
-            message.mutable_ping()->set_timestamp(static_cast<uint64_t>(nowMs));
-
-            addLog("Sending ping");
-
-            auto response = co_spawn(
-                                net_context,
-                                client->send(message),
-                                asio::use_future)
-                                .get();
-
-            addLog("Ping response received");
-
-            LOG(info,
-                "Response from server: {:np}",
-                spdlog::to_hex(response.SerializeAsString()));
-        }
-        catch (std::exception const& ex)
-        {
-            std::string message = "Failed to send ping: ";
-            message += ex.what();
-
-            addLog(message);
-            LOG(err, "Failed to send ping: {}", ex.what());
-        }
+                    addLog("Ping failed: " + message);
+                    LOG(err, "Ping failed: {}", message);
+                });
+            });
     });
 
     auto closeApp = [&] {
-        if (client->isConnected())
-        {
-            client->disconnect();
-        }
-
         window.close();
     };
 
@@ -459,6 +482,22 @@ int main()
             }
         }
 
+        std::deque<std::move_only_function<void()>> pendingUiTasks;
+        {
+            std::scoped_lock lock{uiTasksMutex};
+            pendingUiTasks.swap(uiTasks);
+        }
+        for (auto& task : pendingUiTasks)
+        {
+            task();
+        }
+
+        auto const currentState = client->state();
+        if (currentState != shownState)
+        {
+            showConnectionState(currentState);
+        }
+
         window.clear(sf::Color{10, 14, 23});
         window.draw(blueGlow);
         window.draw(violetGlow);
@@ -468,13 +507,35 @@ int main()
         window.display();
     }
 
-    if (client->isConnected())
-    {
-        client->disconnect();
-    }
+    auto shutdown = asio::co_spawn(
+        net_context,
+        [client]() -> asio::awaitable<void> {
+            while (client->state() != network::ConnectionState::Disconnected)
+            {
+                auto const state = client->state();
+                if (state == network::ConnectionState::Connecting ||
+                    state == network::ConnectionState::Connected)
+                {
+                    try
+                    {
+                        co_await client->disconnect();
+                    }
+                    catch (std::logic_error const&)
+                    {
+                    }
+                    continue;
+                }
 
+                asio::steady_timer wait{co_await asio::this_coro::executor};
+                wait.expires_after(std::chrono::milliseconds{10});
+                co_await wait.async_wait(asio::use_awaitable);
+            }
+        },
+        asio::use_future);
+
+    shutdown.get();
     work.reset();
-    net_context.stop();
+    worker.join();
 
     return 0;
 }

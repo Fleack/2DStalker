@@ -2,7 +2,7 @@
 
 #include "shared/protocol/message.pb.h"
 
-#include <asio/awaitable.hpp>
+#include <boost/asio/awaitable.hpp>
 
 namespace s2d::game
 {
@@ -18,7 +18,7 @@ class ServerMessageHandler
 public:
     explicit ServerMessageHandler(game::WorldService& worldService) noexcept;
 
-    asio::awaitable<protocol::ServerMessage> onMessage(connection_id connection_id, protocol::ClientMessage const& message);
+    boost::asio::awaitable<protocol::ServerMessage> onMessage(connection_id connection_id, protocol::ClientMessage const& message);
     void onDisconnect(connection_id connection_id) noexcept;
 
 private:

@@ -10,7 +10,7 @@
 #include <stdexcept>
 #include <utility>
 
-#include <asio/awaitable.hpp>
+#include <boost/asio/awaitable.hpp>
 #include <catch2/catch_test_macros.hpp>
 
 namespace
@@ -20,6 +20,7 @@ using connection_t = s2d::network::Connection<
     s2d::protocol::ServerMessage>;
 } // namespace
 
+using namespace boost;
 using s2d::test::require_messages_equal;
 using s2d::test::network::available_bytes_after_wait;
 using s2d::test::network::close_socket;
@@ -41,11 +42,11 @@ TEST_CASE_METHOD(
         s2d::network::connection_id{1},
         std::move(sockets.server),
         connection_t::Config{max_message_bytes},
-        [&received_request_id](s2d::network::connection_id, s2d::protocol::ClientMessage message) -> asio::awaitable<void> {
+        [&received_request_id](s2d::protocol::ClientMessage message) -> asio::awaitable<void> {
             received_request_id = message.request_id();
             co_return;
         },
-        [&closed](s2d::network::connection_id) {
+        [&closed]() {
             closed = true;
         });
     connection->start();
@@ -88,7 +89,7 @@ TEST_CASE_METHOD(
         s2d::network::connection_id{1},
         std::move(sockets.server),
         connection_t::Config{max_message_bytes},
-        [](s2d::network::connection_id, s2d::protocol::ClientMessage) -> asio::awaitable<void> {
+        [](s2d::protocol::ClientMessage) -> asio::awaitable<void> {
             co_return;
         });
 

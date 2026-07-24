@@ -28,7 +28,7 @@ ServerMessageHandler::ServerMessageHandler(game::WorldService& worldService) noe
 {
 }
 
-asio::awaitable<protocol::ServerMessage> ServerMessageHandler::onMessage(
+boost::asio::awaitable<protocol::ServerMessage> ServerMessageHandler::onMessage(
     connection_id connection_id,
     protocol::ClientMessage const& message)
 {

@@ -8,9 +8,10 @@
 
 #include <utility>
 
-#include <asio/awaitable.hpp>
+#include <boost/asio/awaitable.hpp>
 #include <catch2/catch_test_macros.hpp>
 
+using namespace boost;
 using s2d::test::network::close_socket;
 using s2d::test::network::make_ping_request;
 using s2d::test::network::max_message_bytes;

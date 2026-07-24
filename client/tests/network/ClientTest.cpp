@@ -1,252 +1,247 @@
 #include "network/Client.hpp"
 #include "shared/tests/network/utils/message_io.hpp"
 #include "shared/tests/network/utils/protocol_messages.hpp"
-#include "shared/tests/utils/future_assertions.hpp"
-#include "shared/tests/utils/protobuf_assertions.hpp"
 #include "utils/client_network_fixture.hpp"
 
 #include <chrono>
 #include <stdexcept>
 #include <system_error>
+#include <utility>
 
-#include <asio/awaitable.hpp>
-#include <asio/ip/tcp.hpp>
+#include <boost/asio/awaitable.hpp>
+#include <boost/asio/ip/tcp.hpp>
 #include <catch2/catch_test_macros.hpp>
 
-using s2d::test::require_messages_equal;
-using s2d::test::require_ready;
-using s2d::test::network::available_bytes_after_wait;
+using namespace boost;
+
 using s2d::test::network::close_socket;
-using s2d::test::network::make_ping_request;
 using s2d::test::network::make_pong_response;
 using s2d::test::network::read_message;
 using s2d::test::network::write_message;
 
-TEST_CASE_METHOD(
-    s2d::test::client::network::client_network_fixture,
-    "Client send throws when disconnected",
-    "[client][network]")
+namespace
 {
-    auto sent = spawn(client->send(make_ping_request(1)));
+s2d::protocol::PingRequest makePing(std::uint64_t timestamp)
+{
+    s2d::protocol::PingRequest request;
+    request.set_timestamp(timestamp);
+    return request;
+}
+} // namespace
 
-    run();
+TEST_CASE("Client validates shared network config", "[client][network]")
+{
+    asio::io_context io;
 
-    REQUIRE_THROWS_AS(sent.get(), std::runtime_error);
+    REQUIRE_THROWS_AS(
+        network::Client::create(
+            io,
+            network::Config{
+                .requestTimeout = std::chrono::steady_clock::duration::zero(),
+            }),
+        std::invalid_argument);
+    REQUIRE_THROWS_AS(
+        network::Client::create(
+            io,
+            network::Config{
+                .maxPendingRequests = 0,
+            }),
+        std::invalid_argument);
 }
 
 TEST_CASE_METHOD(
     s2d::test::client::network::client_network_fixture,
-    "Client failed connect leaves client disconnected",
+    "Client rejects request while disconnected",
     "[client][network]")
 {
-    asio::ip::tcp::endpoint const endpoint{asio::ip::address_v4::loopback(), 0};
-
-    auto connected = spawn(client->connect(endpoint.address(), endpoint.port()));
+    auto sent = spawn(client->sendRequest(makePing(1)));
 
     run();
-    REQUIRE_THROWS_AS(connected.get(), std::system_error);
+
+    REQUIRE_THROWS_AS(sent.get(), std::runtime_error);
+    REQUIRE(client->state() == network::ConnectionState::Disconnected);
+}
+
+TEST_CASE_METHOD(
+    s2d::test::client::network::client_network_fixture,
+    "Client failed connect returns to disconnected and can retry",
+    "[client][network][connection-manager]")
+{
+    asio::ip::tcp::acceptor unavailableEndpoint{io};
+    unavailableEndpoint.open(asio::ip::tcp::v4());
+    unavailableEndpoint.bind({asio::ip::address_v4::loopback(), 0});
+    auto const endpoint = unavailableEndpoint.local_endpoint();
+
+    auto failed = spawn(client->connect(endpoint.address(), endpoint.port()));
+
+    run();
+    REQUIRE_THROWS_AS(failed.get(), std::system_error);
+    REQUIRE(client->state() == network::ConnectionState::Disconnected);
 
     restart();
-    auto sent = spawn(client->send(make_ping_request(2)));
+    auto serverSocket = connect_to_server();
+    REQUIRE(client->state() == network::ConnectionState::Connected);
 
+    close_socket(serverSocket);
     run();
-    REQUIRE_THROWS_AS(sent.get(), std::runtime_error);
+    REQUIRE(client->state() == network::ConnectionState::Disconnected);
 }
 
 TEST_CASE_METHOD(
     s2d::test::client::network::client_network_fixture,
-    "Client rejects duplicate connect while connected",
-    "[client][network]")
+    "Client rejects duplicate connect and disconnect",
+    "[client][network][connection-manager]")
 {
-    auto server_socket = connect_to_server();
-    (void)server_socket;
+    auto serverSocket = connect_to_server();
 
-    auto connected = spawn(client->connect(asio::ip::address_v4::loopback(), 1));
+    auto duplicateConnect = spawn(
+        client->connect(asio::ip::address_v4::loopback(), 1));
+    REQUIRE(run_until_ready(duplicateConnect, std::chrono::milliseconds{100}));
+    REQUIRE_THROWS_AS(duplicateConnect.get(), std::logic_error);
 
-    REQUIRE(run_until_ready(connected, std::chrono::milliseconds{100}));
-    REQUIRE_THROWS_AS(connected.get(), std::runtime_error);
-}
-
-TEST_CASE_METHOD(
-    s2d::test::client::network::client_network_fixture,
-    "Client returns matching response without sending response to response",
-    "[client][network]")
-{
-    auto server_socket = connect_to_server();
-
-    auto request = make_ping_request(0);
-    auto expected_request = make_ping_request(1);
-    auto response = make_pong_response(expected_request.request_id());
-
-    auto served = spawn([&]() -> asio::awaitable<std::size_t> {
-        auto received_request = co_await read_message<s2d::protocol::ClientMessage>(server_socket);
-        require_messages_equal(expected_request, received_request);
-
-        co_await write_message(server_socket, response);
-
-        auto const available_bytes = co_await available_bytes_after_wait(server_socket);
-        close_socket(server_socket);
-        co_return available_bytes;
-    });
-    auto sent = spawn(client->send(request));
-
+    auto firstDisconnect = spawn(client->disconnect());
+    auto duplicateDisconnect = spawn(client->disconnect());
     run();
 
-    require_ready(served);
-    require_ready(sent);
-    REQUIRE(served.get() == 0);
-    require_messages_equal(response, sent.get());
+    REQUIRE_NOTHROW(firstDisconnect.get());
+    REQUIRE_THROWS_AS(duplicateDisconnect.get(), std::logic_error);
+    REQUIRE(client->state() == network::ConnectionState::Disconnected);
+    (void)serverSocket;
 }
 
 TEST_CASE_METHOD(
     s2d::test::client::network::client_network_fixture,
-    "Client correlates concurrent responses by request id",
-    "[client][network]")
+    "Client returns typed ping and state snapshot responses",
+    "[client][network][request]")
 {
-    auto server_socket = connect_to_server();
-
-    auto first_request = make_ping_request(0);
-    auto second_request = make_ping_request(0);
-    auto expected_first_request = make_ping_request(1);
-    auto expected_second_request = make_ping_request(2);
+    auto serverSocket = connect_to_server();
 
     auto served = spawn([&]() -> asio::awaitable<void> {
-        auto first_received = co_await read_message<s2d::protocol::ClientMessage>(server_socket);
-        auto second_received = co_await read_message<s2d::protocol::ClientMessage>(server_socket);
+        auto ping = co_await read_message<s2d::protocol::ClientMessage>(serverSocket);
+        REQUIRE(ping.request_id() == 1);
+        REQUIRE(ping.has_ping());
+        REQUIRE(ping.ping().timestamp() == 42);
+        co_await write_message(serverSocket, make_pong_response(ping.request_id(), 42));
 
-        require_messages_equal(expected_first_request, first_received);
-        require_messages_equal(expected_second_request, second_received);
+        auto snapshot = co_await read_message<s2d::protocol::ClientMessage>(serverSocket);
+        REQUIRE(snapshot.request_id() == 2);
+        REQUIRE(snapshot.has_state_snapshot());
 
-        co_await write_message(server_socket, make_pong_response(expected_second_request.request_id()));
-        co_await write_message(server_socket, make_pong_response(expected_first_request.request_id()));
-
-        close_socket(server_socket);
-        co_return;
+        s2d::protocol::ServerMessage response;
+        response.set_request_id(snapshot.request_id());
+        response.set_status(s2d::protocol::STATUS_OK);
+        response.mutable_state_snapshot()->set_state_json("{\"ready\":true}");
+        co_await write_message(serverSocket, std::move(response));
+        close_socket(serverSocket);
     });
-    auto first_sent = spawn(client->send(first_request));
-    auto second_sent = spawn(client->send(second_request));
 
+    auto pong = spawn(client->sendRequest(makePing(42)));
+    auto snapshot = spawn(client->sendRequest(s2d::protocol::StateSnapshotRequest{}));
     run();
 
     REQUIRE_NOTHROW(served.get());
-    require_messages_equal(make_pong_response(expected_first_request.request_id()), first_sent.get());
-    require_messages_equal(make_pong_response(expected_second_request.request_id()), second_sent.get());
+    REQUIRE(pong.get().timestamp() == 42);
+    REQUIRE(snapshot.get().state_json() == "{\"ready\":true}");
 }
 
 TEST_CASE_METHOD(
     s2d::test::client::network::client_network_fixture,
-    "Client rejects send when pending request limit is reached",
-    "[client][network]")
+    "Client correlates concurrent responses that arrive out of order",
+    "[client][network][request]")
 {
-    client = Client::create(io, Client::Config{.maxPendingRequests = 1});
-    auto server_socket = connect_to_server();
+    auto serverSocket = connect_to_server();
 
-    auto request = make_ping_request(0);
-    auto expected_request = make_ping_request(1);
-    auto response = make_pong_response(expected_request.request_id());
+    auto served = spawn([&]() -> asio::awaitable<void> {
+        auto first = co_await read_message<s2d::protocol::ClientMessage>(serverSocket);
+        auto second = co_await read_message<s2d::protocol::ClientMessage>(serverSocket);
 
-    auto read = spawn(read_message<s2d::protocol::ClientMessage>(server_socket));
-    auto first_sent = spawn(client->send(request));
-
-    REQUIRE(run_until_ready(read, std::chrono::milliseconds{100}));
-    require_messages_equal(expected_request, read.get());
-
-    auto second_sent = spawn(client->send(request));
-
-    REQUIRE(run_until_ready(second_sent, std::chrono::milliseconds{100}));
-    REQUIRE_THROWS_AS(second_sent.get(), std::runtime_error);
-
-    auto write = spawn([&]() -> asio::awaitable<void> {
-        co_await write_message(server_socket, response);
-        close_socket(server_socket);
-        co_return;
+        co_await write_message(
+            serverSocket,
+            make_pong_response(second.request_id(), second.ping().timestamp()));
+        co_await write_message(
+            serverSocket,
+            make_pong_response(first.request_id(), first.ping().timestamp()));
+        close_socket(serverSocket);
     });
 
+    auto first = spawn(client->sendRequest(makePing(11)));
+    auto second = spawn(client->sendRequest(makePing(22)));
     run();
 
-    REQUIRE_NOTHROW(write.get());
-    require_messages_equal(response, first_sent.get());
+    REQUIRE_NOTHROW(served.get());
+    REQUIRE(first.get().timestamp() == 11);
+    REQUIRE(second.get().timestamp() == 22);
 }
 
 TEST_CASE_METHOD(
     s2d::test::client::network::client_network_fixture,
-    "Client closes pending request on unexpected response id",
-    "[client][network]")
+    "Client reports server errors and unexpected response payload",
+    "[client][network][request]")
 {
-    auto server_socket = connect_to_server();
+    auto serverSocket = connect_to_server();
 
-    auto request = make_ping_request(0);
-    auto expected_request = make_ping_request(1);
-    auto wrong_response = make_pong_response(2);
+    auto served = spawn([&]() -> asio::awaitable<void> {
+        auto ping = co_await read_message<s2d::protocol::ClientMessage>(serverSocket);
+        s2d::protocol::ServerMessage error;
+        error.set_request_id(ping.request_id());
+        error.set_status(s2d::protocol::STATUS_ERROR);
+        error.mutable_error()->set_message("server rejected ping");
+        co_await write_message(serverSocket, std::move(error));
 
-    auto served = spawn([&]() -> asio::awaitable<std::size_t> {
-        auto received_request = co_await read_message<s2d::protocol::ClientMessage>(server_socket);
-        require_messages_equal(expected_request, received_request);
-
-        co_await write_message(server_socket, wrong_response);
-
-        auto const available_bytes = co_await available_bytes_after_wait(server_socket);
-        close_socket(server_socket);
-        co_return available_bytes;
+        auto snapshot = co_await read_message<s2d::protocol::ClientMessage>(serverSocket);
+        co_await write_message(serverSocket, make_pong_response(snapshot.request_id()));
+        close_socket(serverSocket);
     });
-    auto sent = spawn(client->send(request));
 
+    auto ping = spawn(client->sendRequest(makePing(7)));
+    auto snapshot = spawn(client->sendRequest(s2d::protocol::StateSnapshotRequest{}));
     run();
 
-    REQUIRE(served.get() == 0);
-    REQUIRE_THROWS_AS(sent.get(), std::runtime_error);
+    REQUIRE_NOTHROW(served.get());
+    REQUIRE_THROWS_AS(ping.get(), std::runtime_error);
+    REQUIRE_THROWS_AS(snapshot.get(), std::runtime_error);
 }
 
 TEST_CASE_METHOD(
     s2d::test::client::network::client_network_fixture,
-    "Client disconnect cancels pending request",
-    "[client][network]")
+    "Remote close fails pending request and updates client state",
+    "[client][network][request][connection-manager]")
 {
-    auto server_socket = connect_to_server();
-
-    auto request = make_ping_request(0);
-    auto expected_request = make_ping_request(1);
-
-    auto read = spawn(read_message<s2d::protocol::ClientMessage>(server_socket));
-    auto sent = spawn(client->send(request));
+    auto serverSocket = connect_to_server();
+    auto read = spawn(read_message<s2d::protocol::ClientMessage>(serverSocket));
+    auto pending = spawn(client->sendRequest(makePing(8)));
 
     REQUIRE(run_until_ready(read, std::chrono::milliseconds{100}));
-    require_messages_equal(expected_request, read.get());
+    REQUIRE(read.get().has_ping());
+    close_socket(serverSocket);
 
-    client->disconnect();
-    run();
-
-    REQUIRE_THROWS_AS(sent.get(), std::runtime_error);
+    REQUIRE(run_until_ready(pending, std::chrono::milliseconds{100}));
+    REQUIRE_THROWS_AS(pending.get(), std::runtime_error);
+    REQUIRE(client->state() == network::ConnectionState::Disconnected);
 }
 
 TEST_CASE_METHOD(
     s2d::test::client::network::client_network_fixture,
-    "Client server-side disconnect cancels pending request",
-    "[client][network]")
+    "Client enforces request timeout and pending request limit",
+    "[client][network][request]")
 {
-    auto server_socket = connect_to_server();
+    client = network::Client::create(
+        io,
+        network::Config{
+            .maxPendingRequests = 1,
+            .requestTimeout = std::chrono::milliseconds{20},
+        });
+    auto serverSocket = connect_to_server();
 
-    auto request = make_ping_request(0);
-    auto expected_request = make_ping_request(1);
-
-    auto read = spawn(read_message<s2d::protocol::ClientMessage>(server_socket));
-    auto sent = spawn(client->send(request));
-
+    auto read = spawn(read_message<s2d::protocol::ClientMessage>(serverSocket));
+    auto first = spawn(client->sendRequest(makePing(1)));
     REQUIRE(run_until_ready(read, std::chrono::milliseconds{100}));
-    require_messages_equal(expected_request, read.get());
+    REQUIRE(read.get().has_ping());
 
-    close_socket(server_socket);
-    REQUIRE(run_until_ready(sent, std::chrono::milliseconds{100}));
+    auto second = spawn(client->sendRequest(makePing(2)));
+    REQUIRE(run_until_ready(second, std::chrono::milliseconds{100}));
+    REQUIRE_THROWS_AS(second.get(), std::runtime_error);
 
-    require_ready(sent);
-    REQUIRE_THROWS_AS(sent.get(), std::runtime_error);
-}
-
-TEST_CASE_METHOD(
-    s2d::test::client::network::client_network_fixture,
-    "Client disconnect is idempotent",
-    "[client][network]")
-{
-    REQUIRE_NOTHROW(client->disconnect());
-    REQUIRE_NOTHROW(client->disconnect());
+    REQUIRE(run_until_ready(first, std::chrono::milliseconds{100}));
+    REQUIRE_THROWS_AS(first.get(), std::runtime_error);
 }

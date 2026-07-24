@@ -3,7 +3,7 @@
 #include "server/src/network/ServerConnectionManager.hpp"
 #include "server/src/network/tcp_server_config.hpp"
 
-#include <asio/awaitable.hpp>
+#include <boost/asio/awaitable.hpp>
 
 namespace asio
 {
@@ -16,7 +16,7 @@ namespace s2d::network
 class TcpServer
 {
 public:
-    TcpServer(asio::io_context& io, tcp_server_config config, ServerMessageHandler& handler);
+    TcpServer(boost::asio::io_context& io, tcp_server_config config, ServerMessageHandler& handler);
 
     ~TcpServer();
 
@@ -25,11 +25,11 @@ public:
     TcpServer(TcpServer&&) = delete;
     TcpServer& operator=(TcpServer&&) = delete;
 
-    asio::awaitable<void> start();
+    boost::asio::awaitable<void> start();
     void stop() noexcept;
 
 private:
-    asio::ip::tcp::acceptor m_acceptor;
+    boost::asio::ip::tcp::acceptor m_acceptor;
     tcp_server_config m_config;
     ServerMessageHandler& m_handler;
     ServerConnectionManager m_connectionManager;

@@ -5,19 +5,19 @@
 
 #include <utility>
 
-#include <asio/error.hpp>
-#include <asio/redirect_error.hpp>
-#include <asio/use_awaitable.hpp>
+#include <boost/asio/error.hpp>
+#include <boost/asio/redirect_error.hpp>
+#include <boost/asio/use_awaitable.hpp>
 
 namespace s2d::network
 {
 
-TcpServer::TcpServer(asio::io_context& io, tcp_server_config config, ServerMessageHandler& handler)
+TcpServer::TcpServer(boost::asio::io_context& io, tcp_server_config config, ServerMessageHandler& handler)
     : m_acceptor(io)
     , m_config(config)
     , m_handler(handler)
 {
-    using asio::ip::tcp;
+    using boost::asio::ip::tcp;
 
     tcp::endpoint const endpoint{tcp::v4(), m_config.port};
 
@@ -32,20 +32,20 @@ TcpServer::~TcpServer()
     stop();
 }
 
-asio::awaitable<void> TcpServer::start()
+boost::asio::awaitable<void> TcpServer::start()
 {
-    using asio::ip::tcp;
+    using boost::asio::ip::tcp;
 
     LOG(info, "Server started on port {}", m_config.port);
     for (;;)
     {
-        asio::error_code ec;
+        system::error_code ec;
         tcp::socket socket{m_acceptor.get_executor()};
-        co_await m_acceptor.async_accept(socket, asio::redirect_error(asio::use_awaitable, ec));
+        co_await m_acceptor.async_accept(socket, boost::asio::redirect_error(boost::asio::use_awaitable, ec));
 
         if (ec)
         {
-            if (m_stopped && (ec == asio::error::operation_aborted || ec == asio::error::bad_descriptor))
+            if (m_stopped && (ec == boost::asio::error::operation_aborted || ec == boost::asio::error::bad_descriptor))
             {
                 break;
             }

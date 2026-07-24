@@ -1,9 +1,15 @@
 add_library(SharedNetwork INTERFACE)
 
 target_link_libraries(SharedNetwork INTERFACE
-        asio_headers
+        Boost::asio
         SharedLogger
 )
+
+if (WIN32)
+    target_compile_definitions(SharedNetwork INTERFACE
+            _WIN32_WINNT=0x0A00
+    )
+endif ()
 
 if (WIN32)
     target_link_libraries(SharedNetwork INTERFACE

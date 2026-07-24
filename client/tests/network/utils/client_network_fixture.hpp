@@ -8,18 +8,20 @@
 #include <future>
 #include <memory>
 
-#include <asio/co_spawn.hpp>
-#include <asio/ip/address_v4.hpp>
-#include <asio/ip/tcp.hpp>
-#include <asio/use_future.hpp>
+#include <boost/asio/co_spawn.hpp>
+#include <boost/asio/ip/address_v4.hpp>
+#include <boost/asio/ip/tcp.hpp>
+#include <boost/asio/use_future.hpp>
 #include <catch2/catch_test_macros.hpp>
 
 namespace s2d::test::client::network
 {
 
+using namespace boost;
+
 struct client_network_fixture : s2d::test::network::io_fixture
 {
-    std::shared_ptr<Client> client{Client::create(io)};
+    std::shared_ptr<::network::Client> client{::network::Client::create(io)};
 
     asio::ip::tcp::socket connect_to_server()
     {

@@ -1,5 +1,7 @@
 add_library(ClientNetwork
         Client.cpp
+        ClientRequestManager.cpp
+        ConnectionManager.cpp
 )
 
 target_include_directories(ClientNetwork PUBLIC

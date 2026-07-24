@@ -8,14 +8,16 @@
 #include <string>
 #include <vector>
 
-#include <asio/awaitable.hpp>
-#include <asio/ip/tcp.hpp>
-#include <asio/read.hpp>
-#include <asio/use_awaitable.hpp>
-#include <asio/write.hpp>
+#include <boost/asio/awaitable.hpp>
+#include <boost/asio/ip/tcp.hpp>
+#include <boost/asio/read.hpp>
+#include <boost/asio/use_awaitable.hpp>
+#include <boost/asio/write.hpp>
 
 namespace s2d::network
 {
+using namespace boost;
+
 class MessageChannel
 {
 public:

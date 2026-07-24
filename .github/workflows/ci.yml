@@ -127,7 +127,7 @@ jobs:
             -DFETCHCONTENT_BASE_DIR="$fetchcontent_dir"
 
       - name: Build
-        run: cmake --build build/${{ matrix.build_type }}
+        run: cmake --build out/${{ matrix.build_type }}
 
       - name: Test
-        run: ctest --test-dir build/${{ matrix.build_type }} --output-on-failure
+        run: ctest --test-dir out/${{ matrix.build_type }} --output-on-failure

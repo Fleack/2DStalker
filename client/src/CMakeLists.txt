@@ -31,19 +31,35 @@ set_target_properties(tgui PROPERTIES SYSTEM TRUE)
 add_subdirectory(network)
 add_subdirectory(render)
 add_subdirectory(ui)
+
+add_library(ClientApplication
+        Application.cpp
+        states/ClientConsoleState.cpp
+        states/StateManager.cpp
+)
+
+target_include_directories(ClientApplication
+        PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
+target_link_libraries(ClientApplication
+        PUBLIC
+        ClientNetwork
+        ClientRender
+        ClientUi
+)
+
+enable_gcc_flags(ClientApplication)
+
 add_executable(Client
         main.cpp
 )
 
-add_subdirectory(network)
-
 target_link_libraries(Client
         PRIVATE
-        ClientNetwork
+        ClientApplication
         SharedLogger
-        TGUI::TGUI
-        SFML::Graphics
-        json_headers
 )
 
 copy_runtime_dlls(Client)

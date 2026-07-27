@@ -28,6 +28,7 @@ set_target_properties(tgui PROPERTIES SYSTEM TRUE)
 
 # ==================================
 
+add_subdirectory(network)
 add_subdirectory(render)
 add_subdirectory(ui)
 add_executable(Client

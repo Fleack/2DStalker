@@ -2,16 +2,11 @@
 
 #include "shared/logger/logger.hpp"
 
-#include <chrono>
 #include <exception>
 #include <future>
-#include <stdexcept>
 #include <utility>
 
 #include <boost/asio/co_spawn.hpp>
-#include <boost/asio/steady_timer.hpp>
-#include <boost/asio/this_coro.hpp>
-#include <boost/asio/use_awaitable.hpp>
 #include <boost/asio/use_future.hpp>
 
 namespace
@@ -50,29 +45,7 @@ NetworkComponent::~NetworkComponent()
     {
         auto shutdown = boost::asio::co_spawn(
             m_io,
-            [client = m_client]() -> boost::asio::awaitable<void> {
-                while (client->state() != network::ConnectionState::Disconnected)
-                {
-                    auto const currentState = client->state();
-                    if (currentState == network::ConnectionState::Connecting ||
-                        currentState == network::ConnectionState::Connected)
-                    {
-                        try
-                        {
-                            co_await client->disconnect();
-                        }
-                        catch (std::logic_error const&)
-                        {
-                        }
-                        continue;
-                    }
-
-                    boost::asio::steady_timer wait{
-                        co_await boost::asio::this_coro::executor};
-                    wait.expires_after(std::chrono::milliseconds{10});
-                    co_await wait.async_wait(boost::asio::use_awaitable);
-                }
-            },
+            m_client->disconnect(),
             boost::asio::use_future);
 
         shutdown.get();

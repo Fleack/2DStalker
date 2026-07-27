@@ -128,6 +128,15 @@ TEST_CASE(
 }
 
 TEST_CASE(
+    "NetworkComponent safely shuts down while disconnected",
+    "[client][application][network]")
+{
+    REQUIRE_NOTHROW([] {
+        s2d::client::NetworkComponent network;
+    }());
+}
+
+TEST_CASE(
     "NetworkComponent safely disconnects during destruction",
     "[client][application][network]")
 {
@@ -150,6 +159,36 @@ TEST_CASE(
         REQUIRE(waitUntil([&] {
             return network.state() == network::ConnectionState::Connected;
         }));
+    }
+
+    REQUIRE(serverSocket->is_open());
+}
+
+TEST_CASE(
+    "NetworkComponent safely destroys after explicit disconnect request",
+    "[client][application][network]")
+{
+    boost::asio::io_context serverIo;
+    boost::asio::ip::tcp::acceptor acceptor{
+        serverIo,
+        {boost::asio::ip::address_v4::loopback(), 0}};
+
+    std::promise<boost::asio::ip::tcp::socket> accepted;
+    auto acceptedFuture = accepted.get_future();
+    std::jthread acceptWorker{[&] {
+        accepted.set_value(acceptor.accept());
+    }};
+    std::optional<boost::asio::ip::tcp::socket> serverSocket;
+
+    {
+        s2d::client::NetworkComponent network;
+        network.connect(acceptor.local_endpoint());
+        serverSocket.emplace(acceptedFuture.get());
+        REQUIRE(waitUntil([&] {
+            return network.state() == network::ConnectionState::Connected;
+        }));
+
+        network.disconnect();
     }
 
     REQUIRE(serverSocket->is_open());

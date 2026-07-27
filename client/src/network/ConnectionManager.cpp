@@ -20,7 +20,9 @@ ConnectionManager::ConnectionManager(
     : m_strand{std::move(strand)}
     , m_connectTimeout{config.connectTimeout}
     , m_manager{std::move(manager)}
-    , m_disconnectCompleted{m_strand, 1}
+    , m_disconnectWaiters{
+          m_strand,
+          std::chrono::steady_clock::time_point::max()}
 {
     if (!m_manager)
     {
@@ -100,28 +102,42 @@ asio::awaitable<void> ConnectionManager::disconnect()
     co_await asio::dispatch(m_strand, asio::use_awaitable);
 
     auto const currentState = state();
-    if (currentState != ConnectionState::Connecting && currentState != ConnectionState::Connected)
+    switch (currentState)
     {
-        throw std::logic_error{"Disconnect is not allowed in current connection state"};
-    }
-
-    setState(ConnectionState::Disconnecting);
-
-    if (currentState == ConnectionState::Connecting)
-    {
+    case ConnectionState::Disconnected:
+        co_return;
+    case ConnectionState::Disconnecting:
+        co_return co_await waitForDisconnected();
+    case ConnectionState::Connecting:
+        setState(ConnectionState::Disconnecting);
         closeConnectingSocket();
-    }
-    else
-    {
+        break;
+    case ConnectionState::Connected:
+        setState(ConnectionState::Disconnecting);
         m_manager->stop("client disconnected");
+        break;
     }
 
-    co_await m_disconnectCompleted.async_receive(asio::use_awaitable);
+    co_await waitForDisconnected();
 }
 
 ConnectionState ConnectionManager::state() const noexcept
 {
     return m_state.load(std::memory_order_acquire);
+}
+
+asio::awaitable<void> ConnectionManager::waitForDisconnected()
+{
+    auto [error] = co_await m_disconnectWaiters.async_wait(
+        asio::as_tuple(asio::use_awaitable));
+
+    // Correct disconnect
+    if (error == asio::error::operation_aborted)
+    {
+        co_return;
+    }
+
+    throw std::system_error{static_cast<std::error_code>(error), "Failed to wait for client disconnect"};
 }
 
 void ConnectionManager::closeConnectingSocket() noexcept
@@ -151,7 +167,7 @@ void ConnectionManager::setState(ConnectionState state)
 
     if (previousState == ConnectionState::Disconnecting && state == ConnectionState::Disconnected)
     {
-        m_disconnectCompleted.try_send(system::error_code{});
+        static_cast<void>(m_disconnectWaiters.cancel());
     }
 }
 } // namespace network

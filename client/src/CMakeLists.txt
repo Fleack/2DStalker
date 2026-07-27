@@ -28,6 +28,7 @@ set_target_properties(tgui PROPERTIES SYSTEM TRUE)
 
 # ==================================
 
+add_subdirectory(ui)
 add_executable(Client
         main.cpp
 )

@@ -51,24 +51,26 @@ TEST_CASE_METHOD(
         REQUIRE(io.poll_one() == 1);
     }
     REQUIRE(client->state() == network::ConnectionState::Disconnecting);
+    auto joinedDisconnect = spawn(client->disconnect());
 
     restart();
     run();
     REQUIRE_NOTHROW(disconnected.get());
+    REQUIRE_NOTHROW(joinedDisconnect.get());
     REQUIRE(client->state() == network::ConnectionState::Disconnected);
     (void)serverSocket;
 }
 
 TEST_CASE_METHOD(
     s2d::test::network::io_fixture,
-    "Connection manager rejects events invalid for current state",
+    "Connection manager treats disconnected disconnect as no-op and rejects duplicate connect",
     "[client][network][connection-manager]")
 {
     auto client = network::Client::create(io);
 
     auto disconnected = spawn(client->disconnect());
     run();
-    REQUIRE_THROWS_AS(disconnected.get(), std::logic_error);
+    REQUIRE_NOTHROW(disconnected.get());
     REQUIRE(client->state() == network::ConnectionState::Disconnected);
 
     restart();
@@ -98,12 +100,14 @@ TEST_CASE_METHOD(
     auto cancelledConnect = spawn(
         client->connect(firstEndpoint.address(), firstEndpoint.port()));
     auto cancelledDisconnect = spawn(client->disconnect());
+    auto joinedDisconnect = spawn(client->disconnect());
 
     REQUIRE(client->state() == network::ConnectionState::Disconnected);
     run();
 
     REQUIRE_THROWS_AS(cancelledConnect.get(), std::system_error);
     REQUIRE_NOTHROW(cancelledDisconnect.get());
+    REQUIRE_NOTHROW(joinedDisconnect.get());
     REQUIRE(client->state() == network::ConnectionState::Disconnected);
 
     restart();
@@ -126,10 +130,12 @@ TEST_CASE_METHOD(
     auto client = network::Client::create(io);
     auto connecting = spawn(client->connect(asio::ip::address_v4::loopback(), 0));
     auto disconnecting = spawn(client->disconnect());
+    auto joinedDisconnect = spawn(client->disconnect());
 
     run();
 
     REQUIRE_THROWS_AS(connecting.get(), std::system_error);
     REQUIRE_NOTHROW(disconnecting.get());
+    REQUIRE_NOTHROW(joinedDisconnect.get());
     REQUIRE(client->state() == network::ConnectionState::Disconnected);
 }

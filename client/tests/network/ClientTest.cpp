@@ -89,7 +89,7 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     s2d::test::client::network::client_network_fixture,
-    "Client rejects duplicate connect and disconnect",
+    "Client rejects duplicate connect and joins duplicate disconnect",
     "[client][network][connection-manager]")
 {
     auto serverSocket = connect_to_server();
@@ -104,9 +104,47 @@ TEST_CASE_METHOD(
     run();
 
     REQUIRE_NOTHROW(firstDisconnect.get());
-    REQUIRE_THROWS_AS(duplicateDisconnect.get(), std::logic_error);
+    REQUIRE_NOTHROW(duplicateDisconnect.get());
     REQUIRE(client->state() == network::ConnectionState::Disconnected);
     (void)serverSocket;
+}
+
+TEST_CASE_METHOD(
+    s2d::test::client::network::client_network_fixture,
+    "Client disconnect completion can be reused across connection cycles",
+    "[client][network][connection-manager]")
+{
+    for (auto cycle = 0; cycle < 2; ++cycle)
+    {
+        auto serverSocket = connect_to_server();
+        auto firstDisconnect = spawn(client->disconnect());
+        auto joinedDisconnect = spawn(client->disconnect());
+        run();
+
+        REQUIRE_NOTHROW(firstDisconnect.get());
+        REQUIRE_NOTHROW(joinedDisconnect.get());
+        REQUIRE(client->state() == network::ConnectionState::Disconnected);
+        (void)serverSocket;
+
+        if (cycle == 0)
+        {
+            restart();
+        }
+    }
+}
+
+TEST_CASE_METHOD(
+    s2d::test::client::network::client_network_fixture,
+    "Remote close racing disconnect completes successfully",
+    "[client][network][connection-manager]")
+{
+    auto serverSocket = connect_to_server();
+    auto disconnected = spawn(client->disconnect());
+    close_socket(serverSocket);
+    run();
+
+    REQUIRE_NOTHROW(disconnected.get());
+    REQUIRE(client->state() == network::ConnectionState::Disconnected);
 }
 
 TEST_CASE_METHOD(

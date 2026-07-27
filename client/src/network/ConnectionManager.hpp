@@ -10,8 +10,8 @@
 
 #include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/awaitable.hpp>
-#include <boost/asio/experimental/channel.hpp>
 #include <boost/asio/ip/tcp.hpp>
+#include <boost/asio/steady_timer.hpp>
 #include <boost/asio/strand.hpp>
 
 namespace network
@@ -35,6 +35,7 @@ public:
     [[nodiscard]] ConnectionState state() const noexcept;
 
 private:
+    asio::awaitable<void> waitForDisconnected();
     void closeConnectingSocket() noexcept;
     void connectionClosed();
     void setState(ConnectionState state);
@@ -46,6 +47,6 @@ private:
 
     std::atomic<ConnectionState> m_state{ConnectionState::Disconnected};
     std::optional<asio::ip::tcp::socket> m_connectingSocket;
-    asio::experimental::channel<void(system::error_code)> m_disconnectCompleted;
+    asio::steady_timer m_disconnectWaiters;
 };
 } // namespace network

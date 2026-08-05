@@ -1,33 +1,49 @@
 #pragma once
 
-#include "shared/network/MessageChannel.hpp"
+#include "ClientTypes.hpp"
+#include "shared/protocol/message.pb.h"
 
-#include <asio/awaitable.hpp>
-#include <asio/ip/tcp.hpp>
+#include <cstdint>
+#include <memory>
 
-namespace s2d::protocol
+#include <boost/asio/awaitable.hpp>
+#include <boost/asio/io_context.hpp>
+#include <boost/asio/ip/address.hpp>
+
+namespace network
 {
-class ClientMessage;
-}
+using namespace boost;
+
+class ConnectionManager;
+
+class ClientRequestManager;
 
 class Client
 {
 public:
-    explicit Client(asio::io_context& ctx);
+    static std::shared_ptr<Client> create(asio::io_context& io, Config config = {});
 
     ~Client();
 
-    asio::awaitable<void> connect(asio::ip::address host, uint16_t port);
-    void disconnect();
+    Client(Client const&) = delete;
+    Client& operator=(Client const&) = delete;
 
-    asio::awaitable<s2d::protocol::ServerMessage> send(s2d::protocol::ClientMessage const& message);
+    Client(Client&&) = delete;
+    Client& operator=(Client&&) = delete;
+
+    asio::awaitable<void> connect(asio::ip::address address, std::uint16_t port);
+    asio::awaitable<void> disconnect();
+
+    asio::awaitable<s2d::protocol::PongResponse> sendRequest(s2d::protocol::PingRequest request);
+    asio::awaitable<s2d::protocol::StateSnapshotResponse> sendRequest(s2d::protocol::StateSnapshotRequest request);
+
+    [[nodiscard]] ConnectionState state() const noexcept;
 
 private:
-    void handle_connect(asio::error_code ec);
+    Client(std::shared_ptr<ClientRequestManager> requestsManager, std::shared_ptr<ConnectionManager> connectionManager) noexcept;
 
 private:
-    asio::ip::tcp::socket m_socket;
-    s2d::network::MessageChannel m_messageChannel;
-    asio::ip::tcp::endpoint m_endpoint{};
-    bool m_connected{false};
+    std::shared_ptr<ClientRequestManager> m_requestsManager;
+    std::shared_ptr<ConnectionManager> m_connectionManager;
 };
+} // namespace network

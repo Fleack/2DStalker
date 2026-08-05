@@ -1,26 +1,39 @@
-#include "network/Connection.hpp"
+#include "game/WorldService.hpp"
 #include "network/ServerMessageHandler.hpp"
 #include "network/TcpServer.hpp"
-#include "network/network_config.hpp"
+#include "network/tcp_server_config.hpp"
 #include "shared/logger/logger.hpp"
+#include "shared/network/Connection.hpp"
 
-#include <asio.hpp>
 #include <cstdint>
 
+#include <boost/asio.hpp>
 #include <spdlog/spdlog.h>
 
-using asio::ip::tcp;
+using namespace boost;
+using namespace boost::asio::ip;
+
+namespace
+{
+
+boost::asio::awaitable<void> startServer(s2d::network::TcpServer& server)
+{
+    co_await server.start();
+}
+
+} // namespace
 
 int main()
 {
     try
     {
-        asio::io_context io;
-        s2d::network::network_config cfg;
-        s2d::network::ServerMessageHandler handler;
+        boost::asio::io_context io;
+        s2d::network::tcp_server_config cfg;
+        s2d::game::WorldService worldService;
+        s2d::network::ServerMessageHandler handler{worldService};
         s2d::network::TcpServer server{io, cfg, handler};
 
-        asio::co_spawn(io, [&server]() -> asio::awaitable<void> { co_await server.start(); }, asio::detached);
+        boost::asio::co_spawn(io, startServer(server), boost::asio::detached);
 
         io.run();
     }

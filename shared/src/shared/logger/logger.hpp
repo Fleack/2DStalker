@@ -30,10 +30,14 @@ consteval char const* short_file(char const (&path)[N]) noexcept
     return short_file_impl(path, N);
 }
 
-inline std::shared_ptr<spdlog::logger>& default_logger() noexcept
+inline std::shared_ptr<spdlog::logger>& default_logger()
 {
     static auto logger = [] {
-        auto lg = spdlog::stdout_color_mt("app");
+        auto lg = spdlog::get("app");
+        if (!lg)
+        {
+            lg = spdlog::stdout_color_mt("app");
+        }
 
         // [%^...%$] — color
         // %v        — user message

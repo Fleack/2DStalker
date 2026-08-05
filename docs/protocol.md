@@ -1,11 +1,14 @@
-# TextStalker Protocol v1
+# Stalker2D Protocol v1
 
 ## Transport
 
-Серверный протокол работает поверх TCP и использует length-prefixed protobuf frames:
+Серверный протокол работает поверх TCP и использует protobuf frames с big-endian length prefix:
 
-1. `uint32` в big-endian с длиной protobuf-сообщения.
-2. Сериализованный payload из `shared/src/protocol/message.proto`.
+1. `uint32` big-endian length prefix с длиной protobuf-сообщения.
+2. Непустой сериализованный protobuf payload из `shared/protocol/message.proto`.
+
+Frame с нулевой длиной, длиной больше настроенного лимита или некорректным protobuf payload считается ошибкой wire
+format.
 
 На чтение и запись сервер использует `s2d::protocol::ClientMessage` и `s2d::protocol::ServerMessage`.
 
@@ -67,7 +70,7 @@ ClientMessage {
 ServerMessage {
   request_id: 2
   status: STATUS_OK
-  state_snapshot { state_json: "{\"world\":\"bootstrap\",\"players\":[]}" }
+  state_snapshot { state_json: "{\"world\":\"bootstrap\",\"map\":{\"width\":32,\"height\":18},\"players\":[{\"id\":1,\"position\":{\"x\":0,\"y\":0}}]}" }
 }
 ```
 

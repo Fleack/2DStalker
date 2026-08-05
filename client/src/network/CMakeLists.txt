@@ -1,3 +1,21 @@
-target_sources(StalkerClient PRIVATE
+add_library(ClientNetwork
+        NetworkComponent.cpp
         Client.cpp
+        ClientRequestManager.cpp
+        ConnectionManager.cpp
 )
+
+target_include_directories(ClientNetwork PUBLIC
+        ${PROJECT_SOURCE_DIR}/client/src
+        ${PROJECT_SOURCE_DIR}/shared/src
+)
+
+target_link_libraries(ClientNetwork
+        PUBLIC
+        SharedNetwork
+        SharedProtocol
+        PRIVATE
+        SharedLogger
+)
+
+enable_gcc_flags(ClientNetwork)

@@ -1,7 +1,8 @@
-#include "ServerMessageHandler.hpp"
+#include "server/src/network/ServerMessageHandler.hpp"
 
-#include "connection_id.hpp"
+#include "server/src/game/WorldService.hpp"
 #include "shared/logger/logger.hpp"
+#include "shared/network/connection_id.hpp"
 #include "shared/protocol/message.pb.h"
 
 #include <string_view>
@@ -10,9 +11,10 @@ namespace s2d::network
 {
 namespace
 {
-protocol::ServerMessage makeErrorResponse(int code, std::string_view message)
+protocol::ServerMessage makeErrorResponse(std::uint64_t request_id, int code, std::string_view message)
 {
     protocol::ServerMessage response;
+    response.set_request_id(request_id);
     response.set_status(protocol::STATUS_ERROR);
     auto* error = response.mutable_error();
     error->set_code(code);
@@ -21,11 +23,17 @@ protocol::ServerMessage makeErrorResponse(int code, std::string_view message)
 }
 } // namespace
 
-asio::awaitable<protocol::ServerMessage> ServerMessageHandler::onMessage(
+ServerMessageHandler::ServerMessageHandler(game::WorldService& worldService) noexcept
+    : m_worldService{worldService}
+{
+}
+
+boost::asio::awaitable<protocol::ServerMessage> ServerMessageHandler::onMessage(
     connection_id connection_id,
     protocol::ClientMessage const& message)
 {
     LOG(debug, "Received from client[{}] message[id={}]", connection_id.id, message.request_id()); // TODO: improve logging
+    m_worldService.connect(connection_id.id);
 
     protocol::ServerMessage response;
     response.set_request_id(message.request_id());
@@ -37,20 +45,21 @@ asio::awaitable<protocol::ServerMessage> ServerMessageHandler::onMessage(
         break;
     case protocol::ClientMessage::kStateSnapshot:
         response.set_status(protocol::STATUS_OK);
-        response.mutable_state_snapshot()->set_state_json(R"({"world":"bootstrap","players":[]})");
+        response.mutable_state_snapshot()->set_state_json(m_worldService.snapshotJson());
         break;
     case protocol::ClientMessage::PAYLOAD_NOT_SET:
     default:
-        response = makeErrorResponse(400, "Client message payload is not set");
+        response = makeErrorResponse(message.request_id(), 400, "Client message payload is not set");
         break;
     }
 
     co_return response;
 }
 
-void ServerMessageHandler::onDisconnect(connection_id connection_id)
+void ServerMessageHandler::onDisconnect(connection_id connection_id) noexcept
 {
     LOG(info, "Client[{}] disconnected", connection_id.id);
+    m_worldService.disconnect(connection_id.id);
 }
 
 } // namespace s2d::network

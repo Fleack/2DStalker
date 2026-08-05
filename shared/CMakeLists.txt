@@ -1,14 +1,5 @@
-add_library(Shared INTERFACE)
+add_subdirectory(src)
 
-target_include_directories(Shared INTERFACE
-        src
-)
-
-add_subdirectory(src/shared/protocol)
-
-target_link_libraries(Shared INTERFACE
-        StalkerProtocol
-        nlohmann_json::nlohmann_json
-        spdlog::spdlog
-        fmt::fmt
-)
+if (BUILD_TESTS)
+    add_subdirectory(tests)
+endif ()

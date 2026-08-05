@@ -1,3 +1,2 @@
-enable_testing()
-
+add_subdirectory(game)
 add_subdirectory(network)

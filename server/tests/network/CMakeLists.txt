@@ -1,18 +1,11 @@
-add_executable(ServerNetworkTests
-        ConnectionWriteQueueTests.cpp
-)
-
-target_link_libraries(ServerNetworkTests PRIVATE
-        Catch2::Catch2WithMain
+s2d_add_test(server-network-connection-manager-test
+        SOURCES
+        ServerConnectionManagerTest.cpp
+        LIBS
         ServerNetwork
-        Shared
+        ServerGame)
+
+add_custom_target(server-network-tests)
+add_dependencies(server-network-tests
+        server-network-connection-manager-test
 )
-
-if (WIN32)
-    target_link_libraries(ServerNetworkTests PRIVATE
-            ws2_32
-            mswsock
-    )
-endif ()
-
-add_test(NAME ServerNetworkTests COMMAND ServerNetworkTests)

@@ -1,27 +1,35 @@
-set(PROTO_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../..)
-set(GEN_ROOT ${CMAKE_CURRENT_BINARY_DIR}/generated)
+find_package(Protobuf CONFIG REQUIRED)
 
-add_custom_command(
-        OUTPUT
-        ${GEN_ROOT}/shared/protocol/message.pb.cc
-        ${GEN_ROOT}/shared/protocol/message.pb.h
-        COMMAND ${CMAKE_COMMAND} -E make_directory ${GEN_ROOT}/shared/protocol
-        COMMAND protobuf::protoc
-        -I ${PROTO_ROOT}
-        --cpp_out=${GEN_ROOT}
-        ${PROTO_ROOT}/shared/protocol/message.proto
-        DEPENDS ${PROTO_ROOT}/shared/protocol/message.proto
-        VERBATIM
+add_library(SharedProtocol SHARED)
+
+target_sources(SharedProtocol
+        PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/message.proto
 )
 
-add_library(StalkerProtocol STATIC
-        ${GEN_ROOT}/shared/protocol/message.pb.cc
+set(SHARED_PROTOCOL_GENERATED_DIR
+        ${CMAKE_CURRENT_BINARY_DIR}/generated
 )
 
-target_include_directories(StalkerProtocol PUBLIC
-        ${GEN_ROOT}
+protobuf_generate(
+        TARGET SharedProtocol
+        LANGUAGE cpp
+        PROTOS ${CMAKE_CURRENT_SOURCE_DIR}/message.proto
+        IMPORT_DIRS ${CMAKE_SOURCE_DIR}/shared/src
+        PROTOC_OUT_DIR ${SHARED_PROTOCOL_GENERATED_DIR}
 )
 
-target_link_libraries(StalkerProtocol PUBLIC
+target_link_libraries(SharedProtocol
+        PUBLIC
         protobuf::libprotobuf
+)
+
+target_include_directories(SharedProtocol
+        PUBLIC
+        ${SHARED_PROTOCOL_GENERATED_DIR}
+        ${PROJECT_SOURCE_DIR}/shared/src
+)
+
+set_target_properties(SharedProtocol PROPERTIES
+        WINDOWS_EXPORT_ALL_SYMBOLS ON
 )

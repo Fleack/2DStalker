@@ -1,65 +1,56 @@
 #include "Client.hpp"
 
-#include "shared/logger/logger.hpp"
-#include "shared/protocol/message.pb.h"
+#include "ClientRequestManager.hpp"
+#include "ConnectionManager.hpp"
 
-#include <asio/connect.hpp>
-#include <asio/redirect_error.hpp>
-#include <asio/use_awaitable.hpp>
+#include <stdexcept>
+#include <utility>
 
-Client::Client(asio::io_context& ctx)
-    : m_socket(ctx) {}
+#include <boost/asio/strand.hpp>
 
-Client::~Client()
+namespace network
 {
-    if (m_connected)
-    {
-        disconnect();
-    }
+std::shared_ptr<Client> Client::create(asio::io_context& io, Config config)
+{
+    config.validate();
+
+    auto strand = asio::make_strand(io);
+    auto requestsManager = std::make_shared<ClientRequestManager>(strand, config);
+    auto connectionManager = std::make_shared<ConnectionManager>(strand, config, requestsManager);
+
+    return std::shared_ptr<Client>{new Client{std::move(requestsManager), std::move(connectionManager)}};
 }
 
-asio::awaitable<void> Client::connect(asio::ip::address ip, uint16_t port)
+Client::Client(std::shared_ptr<ClientRequestManager> requestsManager, std::shared_ptr<ConnectionManager> connectionManager) noexcept
+    : m_requestsManager{std::move(requestsManager)}
+    , m_connectionManager{std::move(connectionManager)}
 {
-    m_endpoint = asio::ip::tcp::endpoint{ip, port};
-    asio::error_code ec;
-    co_await m_socket.async_connect(m_endpoint, asio::redirect_error(asio::use_awaitable, ec));
-    handle_connect(ec);
 }
 
-void Client::disconnect()
-{
-    if (!m_connected)
-    {
-        LOG(warn, "Already disconnected from server");
-        return;
-    }
+Client::~Client() = default;
 
-    m_socket.shutdown(asio::ip::tcp::socket::shutdown_both);
-    m_socket.close();
-    m_connected = false;
-    LOG(info, "Disconnected from server[{}:{}]", m_endpoint.address().to_string(), m_endpoint.port());
-    m_endpoint = {};
+asio::awaitable<void> Client::connect(asio::ip::address address, std::uint16_t port)
+{
+    return m_connectionManager->connect({address, port});
 }
 
-asio::awaitable<s2d::protocol::ServerMessage> Client::send(s2d::protocol::ClientMessage const& message)
+asio::awaitable<void> Client::disconnect()
 {
-    if (!m_connected)
-    {
-        LOG(err, "Not connected to server");
-        throw std::runtime_error("Not connected to server");
-    }
-    co_await m_messageChannel.writeMessage(m_socket, message);
-    co_return co_await m_messageChannel.readMessage<s2d::protocol::ServerMessage>(m_socket);
+    return m_connectionManager->disconnect();
 }
 
-void Client::handle_connect(asio::error_code ec)
+asio::awaitable<s2d::protocol::PongResponse> Client::sendRequest(s2d::protocol::PingRequest request)
 {
-    if (ec)
-    {
-        LOG(err, "Failed to connect to server[{}:{}]: {}", m_endpoint.address().to_string(), m_endpoint.port(), ec.message());
-        return;
-    }
-
-    m_connected = true;
-    LOG(info, "Connected to server[{}:{}]", m_endpoint.address().to_string(), m_endpoint.port());
+    return m_requestsManager->sendRequest(std::move(request));
 }
+
+asio::awaitable<s2d::protocol::StateSnapshotResponse> Client::sendRequest(s2d::protocol::StateSnapshotRequest request)
+{
+    return m_requestsManager->sendRequest(std::move(request));
+}
+
+ConnectionState Client::state() const noexcept
+{
+    return m_connectionManager->state();
+}
+} // namespace network
